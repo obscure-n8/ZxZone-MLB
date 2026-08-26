@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  bot:
+    build: .
+    container_name: zxzone-mlb
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - TZ=Asia/Dhaka
+    env_file:
+      - .env
+    volumes:
+      - ./downloads:/app/downloads
+      - ./encode:/app/encode
+      - ./thumbnails:/app/thumbnails
+      - ./config:/app/config
+    depends_on:
+      - mongodb
+      - redis
+
+  mongodb:
+    image: mongo:7.0
+    container_name: zxzone-mongodb
+    restart: unless-stopped
+    volumes:
+      - mongodb_data:/data/db
+    ports:
+      - "27017:27017"
+
+  redis:
+    image: redis:7-alpine
+    container_name: zxzone-redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+
+  aria2:
+    image: p3terx/aria2-pro
+    container_name: zxzone-aria2
+    restart: unless-stopped
+    environment:
+      - RPC_SECRET=your_aria2_secret
+      - RPC_PORT=6800
+    volumes:
+      - ./downloads:/downloads
+      - ./config:/config
+    ports:
+      - "6800:6800"
+
+volumes:
+  mongodb_data:
+  redis_data:
