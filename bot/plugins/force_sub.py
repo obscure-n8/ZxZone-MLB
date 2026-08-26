@@ -19,17 +19,15 @@ async def check_subscription(client: Client, user_id: int) -> bool:
         if 't.me/' in channel_link:
             channel_username = channel_link.split('t.me/')[-1]
             if channel_username.startswith('+'):
-                # Private channel - check via invite link
                 return True  # Skip check for private channels
             else:
-                # Public channel
                 member = await client.get_chat_member(
                     chat_id=f"@{channel_username}",
                     user_id=user_id
                 )
                 return member.status in ['member', 'administrator', 'creator']
     except:
-        return True  # Skip check on error
+        return True
         
     return True
 
@@ -44,11 +42,9 @@ async def force_sub_check(client: Client, message: Message):
     
     # Check subscription
     if not await check_subscription(client, user_id):
-        # Create join button
         keyboard = InlineKeyboardMarkup([
             [
-                InlineKeyboardButton("📢 Join Channel", url=Config.UPDATE_CHANNEL),
-                InlineKeyboardButton("🔔 Support", url=Config.SUPPORT_GROUP)
+                InlineKeyboardButton("📢 Join Channel", url=Config.UPDATE_CHANNEL)
             ],
             [
                 InlineKeyboardButton("✅ I Joined", callback_data="check_sub")
@@ -62,9 +58,6 @@ async def force_sub_check(client: Client, message: Message):
             parse_mode="markdown"
         )
         return
-    
-    # Continue with normal processing
-    # The message will be handled by other handlers
 
 @Client.on_callback_query(filters.regex("^check_sub$"))
 async def check_sub_callback(client: Client, callback_query):
