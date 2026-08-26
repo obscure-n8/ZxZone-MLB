@@ -1,3 +1,6 @@
+import os
+from bot.plugins.bsettings import bsettings_command
+from bot.plugins.update import update_command
 from pyrogram import Client, filters
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from bot.config import Config
