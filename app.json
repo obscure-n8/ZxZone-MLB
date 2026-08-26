@@ -1,0 +1,122 @@
+{
+  "name": "ZxZone-MLB",
+  "description": "Powerful Telegram Mirror/Leech Bot by Zonexus Hub",
+  "repository": "https://github.com/obscure-n8/ZxZone-MLB",
+  "logo": "https://telegra.ph/file/your-logo.png",
+  "keywords": [
+    "telegram",
+    "bot",
+    "mirror",
+    "leech",
+    "torrent",
+    "python"
+  ],
+  "env": {
+    "BOT_TOKEN": {
+      "description": "Telegram Bot Token from @BotFather",
+      "required": true
+    },
+    "API_ID": {
+      "description": "Telegram API ID from my.telegram.org",
+      "required": true
+    },
+    "API_HASH": {
+      "description": "Telegram API Hash from my.telegram.org",
+      "required": true
+    },
+    "OWNER_ID": {
+      "description": "Your Telegram User ID",
+      "required": true
+    },
+    "BOT_USERNAME": {
+      "description": "Your Bot Username (without @)",
+      "required": true
+    },
+    "DATABASE_URL": {
+      "description": "MongoDB Database URL",
+      "required": true
+    },
+    "REDIS_URL": {
+      "description": "Redis URL (optional)",
+      "required": false,
+      "value": "redis://localhost:6379"
+    },
+    "SUDO_USERS": {
+      "description": "Sudo User IDs (space separated)",
+      "required": false,
+      "value": ""
+    },
+    "UPDATE_CHANNEL": {
+      "description": "Update Channel Link",
+      "required": false,
+      "value": "https://t.me/ZonexusHub"
+    },
+    "SUPPORT_GROUP": {
+      "description": "Support Group Link",
+      "required": false,
+      "value": "https://t.me/ZonexusSupport"
+    },
+    "MAX_TASKS_PER_USER": {
+      "description": "Maximum tasks per user",
+      "required": false,
+      "value": "3"
+    },
+    "MAX_TOTAL_TASKS": {
+      "description": "Maximum total tasks",
+      "required": false,
+      "value": "50"
+    },
+    "QUEUE_LIMIT": {
+      "description": "Queue limit",
+      "required": false,
+      "value": "20"
+    },
+    "DEFAULT_UPLOAD_MODE": {
+      "description": "Default upload mode (document/video/audio)",
+      "required": false,
+      "value": "document"
+    },
+    "ALLOW_PRIVATE_FILES": {
+      "description": "Allow private files",
+      "required": false,
+      "value": "True"
+    },
+    "FORCE_SUBSCRIBE": {
+      "description": "Force subscribe to channel",
+      "required": false,
+      "value": "True"
+    },
+    "ARIA2_HOST": {
+      "description": "Aria2 Host",
+      "required": false,
+      "value": "http://localhost"
+    },
+    "ARIA2_PORT": {
+      "description": "Aria2 Port",
+      "required": false,
+      "value": "6800"
+    },
+    "ARIA2_SECRET": {
+      "description": "Aria2 Secret",
+      "required": false,
+      "value": ""
+    },
+    "RCLONE_REMOTE": {
+      "description": "Rclone Remote Name",
+      "required": false,
+      "value": "gdrive"
+    }
+  },
+  "buildpacks": [
+    {
+      "url": "heroku/python"
+    },
+    {
+      "url": "https://github.com/jonathanong/heroku-buildpack-ffmpeg-latest.git"
+    },
+    {
+      "url": "https://github.com/heroku/heroku-buildpack-apt.git"
+    }
+  ],
+  "stack": "container"
+}
