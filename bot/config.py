@@ -15,7 +15,11 @@ class Config:
     # ============ BOT INFO ============
     BOT_USERNAME = os.getenv("BOT_USERNAME", "ZxZoneMLB_Bot")
     AUTHOR_NAME = os.getenv("AUTHOR_NAME", "ZxZone Hub")
-    AUTHOR_URL = os.getenv("AUTHOR_URL", "https://t.me/ZonexusHub")
+    AUTHOR_URL = os.getenv("AUTHOR_URL", "https://t.me/zxzoneupdates")
+    
+    # ============ CHANNELS & LINKS ============
+    UPDATE_CHANNEL = os.getenv("UPDATE_CHANNEL", "https://t.me/zxzoneupdates")
+    REPO_LINK = os.getenv("REPO_LINK", "https://github.com/obscure-n8/ZxZone-MLB")
     
     # ============ OPTIONAL CONFIG ============
     DEFAULT_LANG = os.getenv("DEFAULT_LANG", "en")
@@ -48,11 +52,10 @@ class Config:
     STORAGE_LIMIT = int(os.getenv("STORAGE_LIMIT", "0"))
     
     # ============ UPLOAD SETTINGS ============
-    DEFAULT_UPLOAD = os.getenv("DEFAULT_UPLOAD", "rc")  # rc/telegram/gd
+    DEFAULT_UPLOAD = os.getenv("DEFAULT_UPLOAD", "rc")
     AS_DOCUMENT = os.getenv("AS_DOCUMENT", "False").lower() == "true"
     EQUAL_SPLITS = os.getenv("EQUAL_SPLITS", "False").lower() == "true"
     MEDIA_GROUP = os.getenv("MEDIA_GROUP", "False").lower() == "true"
-    TRANSMISSION_MODE = os.getenv("TRANSMISSION_MODE", "both")  # bot/user/both
     LEECH_SPLIT_SIZE = int(os.getenv("LEECH_SPLIT_SIZE", "0"))
     LEECH_PREFIX = os.getenv("LEECH_PREFIX", "")
     LEECH_SUFFIX = os.getenv("LEECH_SUFFIX", "")
@@ -157,20 +160,17 @@ class Config:
     
     # ============ UPDATES ============
     UPSTREAM_REPO = os.getenv("UPSTREAM_REPO", "")
-    UPSTREAM_BRANCH = os.getenv("UPSTREAM_BRANCH", "master")
+    UPSTREAM_BRANCH = os.getenv("UPSTREAM_BRANCH", "main")
     
     # ============ JDOWNLOADER ============
     JD_EMAIL = os.getenv("JD_EMAIL", "")
     JD_PASS = os.getenv("JD_PASS", "")
     
-    # ============ NZB ============
-    USENET_SERVERS = os.getenv("USENET_SERVERS", "[]")
-    
     # ============ TELEMETRY ============
     ENABLE_TELEMETRY = os.getenv("ENABLE_TELEMETRY", "True").lower() == "true"
     
     # ============ PROXY ============
-    TG_PROXY = os.getenv("TG_PROXY", "")  # JSON string
+    TG_PROXY = os.getenv("TG_PROXY", "")
     
     # ============ USER SESSION ============
     USER_SESSION_STRING = os.getenv("USER_SESSION_STRING", "")
@@ -210,15 +210,3 @@ class Config:
         if errors:
             raise ValueError("\n".join(errors))
         return True
-    
-    @classmethod
-    def display_config(cls):
-        """Display configuration without sensitive data"""
-        configs = {}
-        for key, value in cls.__dict__.items():
-            if not key.startswith('_') and not callable(value):
-                if 'TOKEN' in key or 'PASSWORD' in key or 'SECRET' in key or 'API' in key:
-                    configs[key] = "***HIDDEN***"
-                else:
-                    configs[key] = value
-        return configs
