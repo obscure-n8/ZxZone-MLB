@@ -8,8 +8,8 @@ class Config:
     # ============ REQUIRED CONFIG ============
     BOT_TOKEN = os.getenv("BOT_TOKEN", "")
     OWNER_ID = int(os.getenv("OWNER_ID", "0"))
-    TELEGRAM_API = int(os.getenv("API_ID", os.getenv("TELEGRAM_API", "0")))
-    TELEGRAM_HASH = os.getenv("API_HASH", os.getenv("TELEGRAM_HASH", ""))
+    TELEGRAM_API = int(os.getenv("API_ID", "0"))
+    TELEGRAM_HASH = os.getenv("API_HASH", "")
     DATABASE_URL = os.getenv("DATABASE_URL", "")
     
     # ============ BOT INFO ============
@@ -200,9 +200,9 @@ class Config:
         if not cls.BOT_TOKEN:
             errors.append("BOT_TOKEN is missing!")
         if not cls.TELEGRAM_API or cls.TELEGRAM_API == 0:
-            errors.append("TELEGRAM_API is missing!")
+            errors.append("API_ID is missing!")
         if not cls.TELEGRAM_HASH:
-            errors.append("TELEGRAM_HASH is missing!")
+            errors.append("API_HASH is missing!")
         if not cls.OWNER_ID or cls.OWNER_ID == 0:
             errors.append("OWNER_ID is missing!")
         if not cls.DATABASE_URL:
