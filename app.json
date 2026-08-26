@@ -49,12 +49,12 @@
     "UPDATE_CHANNEL": {
       "description": "Update Channel Link",
       "required": false,
-      "value": "https://t.me/ZonexusHub"
+      "value": "https://t.me/zxzoneupdates"
     },
-    "SUPPORT_GROUP": {
-      "description": "Support Group Link",
+    "REPO_LINK": {
+      "description": "Repository Link",
       "required": false,
-      "value": "https://t.me/ZonexusSupport"
+      "value": "https://github.com/obscure-n8/ZxZone-MLB"
     },
     "MAX_TASKS_PER_USER": {
       "description": "Maximum tasks per user",
