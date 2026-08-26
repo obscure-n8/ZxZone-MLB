@@ -5,110 +5,175 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Config:
-    # Telegram API
+    # ============ REQUIRED CONFIG ============
     BOT_TOKEN = os.getenv("BOT_TOKEN", "")
-    API_ID = int(os.getenv("API_ID", "0"))
-    API_HASH = os.getenv("API_HASH", "")
-    BOT_USERNAME = os.getenv("BOT_USERNAME", "ZxZoneMLB_Bot")
-    
-    # Owner & Admins
     OWNER_ID = int(os.getenv("OWNER_ID", "0"))
+    TELEGRAM_API = int(os.getenv("API_ID", os.getenv("TELEGRAM_API", "0")))
+    TELEGRAM_HASH = os.getenv("API_HASH", os.getenv("TELEGRAM_HASH", ""))
+    DATABASE_URL = os.getenv("DATABASE_URL", "")
+    
+    # ============ BOT INFO ============
+    BOT_USERNAME = os.getenv("BOT_USERNAME", "ZxZoneMLB_Bot")
+    AUTHOR_NAME = os.getenv("AUTHOR_NAME", "ZxZone Hub")
+    AUTHOR_URL = os.getenv("AUTHOR_URL", "https://t.me/ZonexusHub")
+    
+    # ============ OPTIONAL CONFIG ============
+    DEFAULT_LANG = os.getenv("DEFAULT_LANG", "en")
+    CMD_SUFFIX = os.getenv("CMD_SUFFIX", "")
+    AUTHORIZED_CHATS = os.getenv("AUTHORIZED_CHATS", "")
     SUDO_USERS = [int(x) for x in os.getenv("SUDO_USERS", "").split() if x]
     SUDO_USERS.append(OWNER_ID)
     
-    # Channels & Links
-    UPDATE_CHANNEL = os.getenv("UPDATE_CHANNEL", "https://t.me/ZonexusHub")
-    REPO_LINK = os.getenv("REPO_LINK", "https://github.com/obscure-n8/ZxZone-MLB")
-    SUPPORT_GROUP = os.getenv("SUPPORT_GROUP", "https://t.me/ZonexusSupport")
+    # ============ TASK LIMITS ============
+    STATUS_LIMIT = int(os.getenv("STATUS_LIMIT", "10"))
+    STATUS_UPDATE_INTERVAL = int(os.getenv("STATUS_UPDATE_INTERVAL", "15"))
+    BOT_MAX_TASKS = int(os.getenv("BOT_MAX_TASKS", "0"))
+    USER_MAX_TASKS = int(os.getenv("USER_MAX_TASKS", "0"))
+    USER_TIME_INTERVAL = int(os.getenv("USER_TIME_INTERVAL", "0"))
     
-    # Database
-    DATABASE_URL = os.getenv("DATABASE_URL", "")
-    REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
+    # Task Type Limits
+    DIRECT_LIMIT = int(os.getenv("DIRECT_LIMIT", "0"))
+    MEGA_LIMIT = int(os.getenv("MEGA_LIMIT", "0"))
+    TORRENT_LIMIT = int(os.getenv("TORRENT_LIMIT", "0"))
+    GD_DL_LIMIT = int(os.getenv("GD_DL_LIMIT", "0"))
+    RC_DL_LIMIT = int(os.getenv("RC_DL_LIMIT", "0"))
+    CLONE_LIMIT = int(os.getenv("CLONE_LIMIT", "0"))
+    JD_LIMIT = int(os.getenv("JD_LIMIT", "0"))
+    NZB_LIMIT = int(os.getenv("NZB_LIMIT", "0"))
+    YTDLP_LIMIT = int(os.getenv("YTDLP_LIMIT", "0"))
+    PLAYLIST_LIMIT = int(os.getenv("PLAYLIST_LIMIT", "0"))
+    LEECH_LIMIT = int(os.getenv("LEECH_LIMIT", "0"))
+    EXTRACT_LIMIT = int(os.getenv("EXTRACT_LIMIT", "0"))
+    ARCHIVE_LIMIT = int(os.getenv("ARCHIVE_LIMIT", "0"))
+    STORAGE_LIMIT = int(os.getenv("STORAGE_LIMIT", "0"))
     
-    # Paths
+    # ============ UPLOAD SETTINGS ============
+    DEFAULT_UPLOAD = os.getenv("DEFAULT_UPLOAD", "rc")  # rc/telegram/gd
+    AS_DOCUMENT = os.getenv("AS_DOCUMENT", "False").lower() == "true"
+    EQUAL_SPLITS = os.getenv("EQUAL_SPLITS", "False").lower() == "true"
+    MEDIA_GROUP = os.getenv("MEDIA_GROUP", "False").lower() == "true"
+    TRANSMISSION_MODE = os.getenv("TRANSMISSION_MODE", "both")  # bot/user/both
+    LEECH_SPLIT_SIZE = int(os.getenv("LEECH_SPLIT_SIZE", "0"))
+    LEECH_PREFIX = os.getenv("LEECH_PREFIX", "")
+    LEECH_SUFFIX = os.getenv("LEECH_SUFFIX", "")
+    LEECH_FONT = os.getenv("LEECH_FONT", "")
+    LEECH_CAPTION = os.getenv("LEECH_CAPTION", "")
+    THUMBNAIL_LAYOUT = os.getenv("THUMBNAIL_LAYOUT", "")
+    
+    # ============ DISABLE OPTIONS ============
+    DISABLE_TORRENTS = os.getenv("DISABLE_TORRENTS", "False").lower() == "true"
+    DISABLE_LEECH = os.getenv("DISABLE_LEECH", "False").lower() == "true"
+    DISABLE_MIRROR = os.getenv("DISABLE_MIRROR", "False").lower() == "true"
+    DISABLE_BULK = os.getenv("DISABLE_BULK", "False").lower() == "true"
+    DISABLE_MULTI = os.getenv("DISABLE_MULTI", "False").lower() == "true"
+    DISABLE_SEED = os.getenv("DISABLE_SEED", "False").lower() == "true"
+    DISABLE_FF_MODE = os.getenv("DISABLE_FF_MODE", "False").lower() == "true"
+    DISABLE_JD = os.getenv("DISABLE_JD", "False").lower() == "true"
+    DISABLE_NZB = os.getenv("DISABLE_NZB", "False").lower() == "true"
+    DISABLE_RSS = os.getenv("DISABLE_RSS", "False").lower() == "true"
+    DISABLE_SEARCH = os.getenv("DISABLE_SEARCH", "False").lower() == "true"
+    DISABLE_STREAM = os.getenv("DISABLE_STREAM", "False").lower() == "true"
+    DISABLE_YTDLP = os.getenv("DISABLE_YTDLP", "False").lower() == "true"
+    DISABLE_MEGA = os.getenv("DISABLE_MEGA", "False").lower() == "true"
+    
+    # ============ API KEYS ============
+    FILELION_API = os.getenv("FILELION_API", "")
+    STREAMWISH_API = os.getenv("STREAMWISH_API", "")
+    ALLDEBRID_API_KEY = os.getenv("ALLDEBRID_API_KEY", "")
+    INSTADL_API = os.getenv("INSTADL_API", "")
+    HYDRA_IP = os.getenv("HYDRA_IP", "")
+    HYDRA_API_KEY = os.getenv("HYDRA_API_KEY", "")
+    
+    # ============ MEGA ============
+    MEGA_EMAIL = os.getenv("MEGA_EMAIL", "")
+    MEGA_PASSWORD = os.getenv("MEGA_PASSWORD", "")
+    
+    # ============ PATHS ============
     BASE_DIR = Path(__file__).parent.parent
     DOWNLOAD_DIR = str(BASE_DIR / "downloads")
     ENCODE_DIR = str(BASE_DIR / "encode")
     THUMB_DIR = str(BASE_DIR / "thumbnails")
     CONFIG_DIR = str(BASE_DIR / "config")
+    SESSION_DIR = str(BASE_DIR / "sessions")
     
-    # Limits
-    MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024  # 2GB
-    MAX_TASKS_PER_USER = int(os.getenv("MAX_TASKS_PER_USER", "3"))
-    MAX_TOTAL_TASKS = int(os.getenv("MAX_TOTAL_TASKS", "50"))
-    QUEUE_LIMIT = int(os.getenv("QUEUE_LIMIT", "20"))
+    # ============ GD TOOLS ============
+    GDRIVE_ID = os.getenv("GDRIVE_ID", "")
+    GD_DESP = os.getenv("GD_DESP", "Uploaded with ZxZone Bot")
+    IS_TEAM_DRIVE = os.getenv("IS_TEAM_DRIVE", "False").lower() == "true"
+    STOP_DUPLICATE = os.getenv("STOP_DUPLICATE", "False").lower() == "true"
+    INDEX_URL = os.getenv("INDEX_URL", "")
+    USE_SERVICE_ACCOUNTS = os.getenv("USE_SERVICE_ACCOUNTS", "False").lower() == "true"
     
-    # Bot Settings
-    DEFAULT_UPLOAD_MODE = os.getenv("DEFAULT_UPLOAD_MODE", "document")
-    ALLOW_PRIVATE_FILES = os.getenv("ALLOW_PRIVATE_FILES", "True").lower() == "true"
-    FORCE_SUBSCRIBE = os.getenv("FORCE_SUBSCRIBE", "True").lower() == "true"
+    # ============ RCLONE ============
+    RCLONE_PATH = os.getenv("RCLONE_PATH", "")
+    RCLONE_FLAGS = os.getenv("RCLONE_FLAGS", "")
+    RCLONE_SERVE_URL = os.getenv("RCLONE_SERVE_URL", "")
+    SHOW_CLOUD_LINK = os.getenv("SHOW_CLOUD_LINK", "True").lower() == "true"
+    RCLONE_SERVE_PORT = int(os.getenv("RCLONE_SERVE_PORT", "0"))
+    RCLONE_SERVE_USER = os.getenv("RCLONE_SERVE_USER", "")
+    RCLONE_SERVE_PASS = os.getenv("RCLONE_SERVE_PASS", "")
     
-    # Aria2
-    ARIA2_HOST = os.getenv("ARIA2_HOST", "http://localhost")
-    ARIA2_PORT = int(os.getenv("ARIA2_PORT", "6800"))
-    ARIA2_SECRET = os.getenv("ARIA2_SECRET", "")
+    # ============ QUEUE SYSTEM ============
+    QUEUE_ALL = int(os.getenv("QUEUE_ALL", "0"))
+    QUEUE_DOWNLOAD = int(os.getenv("QUEUE_DOWNLOAD", "0"))
+    QUEUE_UPLOAD = int(os.getenv("QUEUE_UPLOAD", "0"))
     
-    # Rclone
-    RCLONE_CONFIG = os.getenv("RCLONE_CONFIG_PATH", str(BASE_DIR / "config" / "rclone.conf"))
-    RCLONE_REMOTE = os.getenv("RCLONE_REMOTE", "gdrive")
+    # ============ TORRENT ============
+    TORRENT_TIMEOUT = int(os.getenv("TORRENT_TIMEOUT", "0"))
+    BASE_URL = os.getenv("BASE_URL", "")
+    WEB_PINCODE = os.getenv("WEB_PINCODE", "True").lower() == "true"
     
-    # YT-DLP
-    YTDLP_OPTIONS = {
-        'format': 'bestvideo[height<=1080]+bestaudio/best[height<=1080]',
-        'merge_output_format': 'mkv',
-        'writethumbnail': True,
-        'cookiefile': str(BASE_DIR / "config" / "cookies.txt"),
-        'noplaylist': True,
-        'quiet': True,
-        'no_warnings': True,
-    }
+    # ============ RSS ============
+    RSS_DELAY = int(os.getenv("RSS_DELAY", "600"))
+    RSS_CHAT = os.getenv("RSS_CHAT", "")
+    RSS_SIZE_LIMIT = int(os.getenv("RSS_SIZE_LIMIT", "0"))
     
-    # Bot Messages
-    START_MESSAGE = """
-**Zonexus M/L Bot** 🔥
-
-**Powered By Zonexus Hub** ❞
-
-👋 Welcome {user}!
-
-I'm **{bot}** - Powerful Mirror/Leech Bot
-
-**Features:**
-• Direct Link Download
-• Torrent/Magnet Support
-• YouTube/YT-DLP
-• Google Drive/Mega
-• Rclone Support
-• File Operations
-
-**Commands:**
-/leech - Leech to Telegram
-/mirror - Mirror to Cloud
-/ytdl - YouTube Download
-/settings - Bot Settings
-/status - Check Status
-"""
+    # ============ SEARCH ============
+    SEARCH_API_LINK = os.getenv("SEARCH_API_LINK", "")
+    SEARCH_LIMIT = int(os.getenv("SEARCH_LIMIT", "0"))
+    USE_IMAGES = os.getenv("USE_IMAGES", "False").lower() == "true"
+    IMG_SEARCH = os.getenv("IMG_SEARCH", "")
+    IMG_PAGE = int(os.getenv("IMG_PAGE", "1"))
     
-    PROGRESS_TEMPLATE = """
-**Zonexus M/L Bot 1**
-┌ **{bot_name}**
-└ `/leech1 {task_id}`
-
-▍ **Powered By Zonexus Hub** ❞
-
-{file_count}. `{file_name}`
-┌ **Task By {user}**
-│ {progress_bar} {percentage:.1f}%
-│ **Status** : {status}
-│ **Total** : {total} | **Done** : {done}
-│ **Speed** : {speed}/s | **ETA** : {eta}
-│ **Engine** : Aria2 v1.37.0 | **Mode** : `#{mode}`
-> **Stop** : `/c_{task_id}`
-
-⬢ **BOT STATS**
-┌ **CPU** : {cpu}% | **RAM** : {ram}%
-└ **FREE** : {free_disk}
-"""
+    # ============ YT TOOLS ============
+    YT_DESP = os.getenv("YT_DESP", "Uploaded to YouTube by ZxZone bot")
+    YT_CATEGORY_ID = int(os.getenv("YT_CATEGORY_ID", "22"))
+    YT_PRIVACY_STATUS = os.getenv("YT_PRIVACY_STATUS", "unlisted")
+    
+    # ============ BOT SETTINGS ============
+    BOT_PM = os.getenv("BOT_PM", "False").lower() == "true"
+    SET_COMMANDS = os.getenv("SET_COMMANDS", "True").lower() == "true"
+    TIMEZONE = os.getenv("TIMEZONE", "Asia/Dhaka")
+    FORCE_SUB_IDS = os.getenv("FORCE_SUB_IDS", "")
+    MEDIA_STORE = os.getenv("MEDIA_STORE", "True").lower() == "true"
+    DELETE_LINKS = os.getenv("DELETE_LINKS", "False").lower() == "true"
+    VERIFY_TIMEOUT = int(os.getenv("VERIFY_TIMEOUT", "0"))
+    LOGIN_PASS = os.getenv("LOGIN_PASS", "")
+    
+    # ============ LOG CHANNELS ============
+    LEECH_DUMP_CHAT = os.getenv("LEECH_DUMP_CHAT", "")
+    LINKS_LOG_ID = os.getenv("LINKS_LOG_ID", "")
+    MIRROR_LOG_ID = os.getenv("MIRROR_LOG_ID", "")
+    
+    # ============ UPDATES ============
+    UPSTREAM_REPO = os.getenv("UPSTREAM_REPO", "")
+    UPSTREAM_BRANCH = os.getenv("UPSTREAM_BRANCH", "master")
+    
+    # ============ JDOWNLOADER ============
+    JD_EMAIL = os.getenv("JD_EMAIL", "")
+    JD_PASS = os.getenv("JD_PASS", "")
+    
+    # ============ NZB ============
+    USENET_SERVERS = os.getenv("USENET_SERVERS", "[]")
+    
+    # ============ TELEMETRY ============
+    ENABLE_TELEMETRY = os.getenv("ENABLE_TELEMETRY", "True").lower() == "true"
+    
+    # ============ PROXY ============
+    TG_PROXY = os.getenv("TG_PROXY", "")  # JSON string
+    
+    # ============ USER SESSION ============
+    USER_SESSION_STRING = os.getenv("USER_SESSION_STRING", "")
     
     @classmethod
     def ensure_dirs(cls):
@@ -118,6 +183,42 @@ I'm **{bot}** - Powerful Mirror/Leech Bot
             cls.ENCODE_DIR,
             cls.THUMB_DIR,
             cls.CONFIG_DIR,
+            cls.SESSION_DIR,
+            os.path.join(cls.DOWNLOAD_DIR, "temp"),
+            os.path.join(cls.DOWNLOAD_DIR, "queue"),
+            os.path.join(cls.DOWNLOAD_DIR, "completed"),
+            os.path.join(cls.THUMB_DIR, "users"),
+            os.path.join(cls.THUMB_DIR, "watermarks"),
         ]
         for dir_path in dirs:
             os.makedirs(dir_path, exist_ok=True)
+    
+    @classmethod
+    def validate_config(cls):
+        """Validate required configuration"""
+        errors = []
+        if not cls.BOT_TOKEN:
+            errors.append("BOT_TOKEN is missing!")
+        if not cls.TELEGRAM_API or cls.TELEGRAM_API == 0:
+            errors.append("TELEGRAM_API is missing!")
+        if not cls.TELEGRAM_HASH:
+            errors.append("TELEGRAM_HASH is missing!")
+        if not cls.OWNER_ID or cls.OWNER_ID == 0:
+            errors.append("OWNER_ID is missing!")
+        if not cls.DATABASE_URL:
+            errors.append("DATABASE_URL is missing!")
+        if errors:
+            raise ValueError("\n".join(errors))
+        return True
+    
+    @classmethod
+    def display_config(cls):
+        """Display configuration without sensitive data"""
+        configs = {}
+        for key, value in cls.__dict__.items():
+            if not key.startswith('_') and not callable(value):
+                if 'TOKEN' in key or 'PASSWORD' in key or 'SECRET' in key or 'API' in key:
+                    configs[key] = "***HIDDEN***"
+                else:
+                    configs[key] = value
+        return configs
