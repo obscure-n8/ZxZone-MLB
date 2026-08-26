@@ -2,14 +2,15 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
+# Load environment variables
 load_dotenv()
 
 class Config:
     # ============ REQUIRED CONFIG ============
     BOT_TOKEN = os.getenv("BOT_TOKEN", "")
     OWNER_ID = int(os.getenv("OWNER_ID", "0"))
-    TELEGRAM_API = int(os.getenv("API_ID", "0"))
-    TELEGRAM_HASH = os.getenv("API_HASH", "")
+    API_ID = int(os.getenv("API_ID", "0"))
+    API_HASH = os.getenv("API_HASH", "")
     DATABASE_URL = os.getenv("DATABASE_URL", "")
     
     # ============ BOT INFO ============
@@ -199,9 +200,9 @@ class Config:
         errors = []
         if not cls.BOT_TOKEN:
             errors.append("BOT_TOKEN is missing!")
-        if not cls.TELEGRAM_API or cls.TELEGRAM_API == 0:
+        if not cls.API_ID or cls.API_ID == 0:
             errors.append("API_ID is missing!")
-        if not cls.TELEGRAM_HASH:
+        if not cls.API_HASH:
             errors.append("API_HASH is missing!")
         if not cls.OWNER_ID or cls.OWNER_ID == 0:
             errors.append("OWNER_ID is missing!")
