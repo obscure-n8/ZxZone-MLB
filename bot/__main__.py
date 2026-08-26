@@ -31,19 +31,19 @@ async def main():
     try:
         # Start bot
         await bot.start()
-        logger.info("✅ Bot started successfully!")
-        logger.info(f"🤖 Bot: @{Config.BOT_USERNAME}")
-        logger.info(f"👑 Owner: {Config.OWNER_ID}")
+        logger.info("Bot started successfully!")
+        logger.info(f"Bot: @{Config.BOT_USERNAME}")
+        logger.info(f"Owner: {Config.OWNER_ID}")
         
         # Keep bot running
         await idle()
         
     except Exception as e:
-        logger.error(f"❌ Bot failed to start: {e}")
+        logger.error(f"Bot failed to start: {e}")
         
     finally:
         await bot.stop()
-        logger.info("❌ Bot stopped!")
+        logger.info("Bot stopped!")
 
 if __name__ == "__main__":
     asyncio.run(main())
