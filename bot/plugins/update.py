@@ -1,3 +1,4 @@
+import sys
 import os
 import subprocess
 from pyrogram import Client, filters
