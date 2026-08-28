@@ -4,7 +4,6 @@ tgcrypto==1.2.5
 python-dotenv==1.0.0
 aiohttp==3.9.1
 aiofiles==23.2.1
-asyncio==3.4.3
 
 # Database
 motor==3.3.2
