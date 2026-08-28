@@ -9,14 +9,14 @@ def home():
     """Home page for keep alive"""
     return jsonify({
         'status': 'alive',
-        'bot': 'ZxZone-MLB',
+        'bot': os.getenv('BOT_USERNAME', 'ZxZone-MLB'),
         'timestamp': time.time(),
         'message': 'Bot is running!'
     })
 
 @app.route('/health')
 def health():
-    """Health check endpoint"""
+    """Health check endpoint - Railway uses this"""
     return jsonify({
         'status': 'healthy',
         'timestamp': time.time()
