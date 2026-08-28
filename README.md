@@ -1,207 +1,345 @@
-# 🤖 ZxZone-MLB
+# ZxZone-MLB — The Ultimate Telegram Mirror & Leech Bot
 
-### The Most Powerful Telegram Mirror & Leech Bot
-
----
-
-## 🌟 Overview
-
-ZxZone-MLB is a production-ready, feature-rich Telegram bot built for high-speed mirroring and leeching. It is designed to handle 50–70 concurrent tasks with ease and includes advanced AI-powered tools, security systems, and a complete admin management suite.
+The Most Powerful and Feature-Rich Bot Ever Built
 
 ---
 
-## ⚡ Core Features
+## Overview
 
-### 📥 Download System
-- Direct Link Download
-- Batch Download (Multiple Links)
-- Torrent & Magnet Support
-- Mega, Gofile, Google Drive Support
-- YouTube & YT-DLP Support
-- JDownloader Integration
-- Smart Retry System
-- Link Grabber
-- Channel Mirror
+ZxZone-MLB is not just another mirror bot. It is a complete download management system built with over 180 advanced features. Whether you need to download, upload, search, or manage files, this bot handles everything with speed, security, and intelligence.
 
-### 📤 Upload System
-- Telegram Upload
-- Google Drive Upload
-- Rclone Cloud Upload
-- Multiple Upload Modes (Document / Video / Audio)
-- Custom Thumbnail Support
-- Link Generator
-- Auto Split & Merge
+---
 
-### 🔍 Search System
-- Torrent Search
-- Image Search
-- Multi-Source Search
-- Search Suggestions
+## Why ZxZone-MLB?
 
-### 🛡 Security System
-- NSFW Content Detection
-- Spam Filter
-- Abusive Content Filter
-- File Scanner
-- Malware Detection
-- Force Subscribe
-- Rate Limiting
-- Permission System
+Most bots offer basic downloading. ZxZone-MLB goes far beyond that with AI-powered tools, enterprise-level security, and complete user management. It is built for power users who demand more.
 
-### 🤖 AI-Powered Features
-- AI Caption Generator
-- Smart File Organizer
-- File Detective (Deep File Analysis)
-- Smart Scheduler
-- Auto Retry System
-- Smart Analytics
+---
 
-### 👥 User Management
-- Premium User System
-- Sudo User Management
-- Admin Management
-- Owner Panel
-- Ban / Mute System
-- User Activity Tracking
-- Top User Rankings
+## Download System
 
-### ⚙️ Settings System
-- Bot Settings Panel
-- Aria2 Configuration
-- Qbittorrent Configuration
-- User Settings Panel
-- Upload Settings
-- Download Settings
-- Security Settings
-- Appearance Settings
-
-### 📊 Analytics & Monitoring
-- Real-Time Bot Analytics
-- User Analytics
-- Performance Metrics
-- Daily Statistics
-- System Monitoring
-- Health Check
-- Advanced Reports
-
-### 🔧 Advanced Tools
-- Auto Backup System
-- Auto Update System
-- Update Rollback Support
-- Web Dashboard
-- Multi-Bot Support
-- System Monitoring
-- File Detective
-- Smart Organizer
-
-### 🎨 File Operations
-- Zip / Unzip
-- File Rename
-- Video Watermark
-- Media Info Extractor
-- Video Converter
-- Audio Extractor
-- File Split / Merge
-- Smart File Organizer
-
-### 📦 Supported Platforms
-- Telegram
+### Supported Sources:
+- Direct HTTP and HTTPS links
+- Torrent and Magnet links
+- YouTube videos and playlists
+- Mega.nz
+- Gofile.io
+- Pixeldrain
 - Google Drive
-- Mega
-- Gofile
-- Dropbox
-- OneDrive
-- YouTube
-- Torrents
-- Direct HTTP Links
+- MediaFire
+- Icc.Tv videos
+- Viking files
+- M3U8 streams
+- Instagram Reels
+- TikTok videos
+- Facebook videos
+- Twitter videos
 
-### 🚀 Performance
-- Asynchronous Architecture
-- Queue Management
-- Multi-Task Support (50–70 tasks)
-- High-Speed Downloads
-- Parallel Processing
-- Smart Resource Management
-- Automatic Recovery
-
-### 🔐 Admin Controls
-- Owner Panel
-- Sudo Management
-- Admin Logs
-- Broadcast System
-- User Ban / Unban
-- Premium Assignment
-- System Settings
-- Backup & Restore
-
-### 📝 Logging & Monitoring
-- Detailed Bot Logs
-- Admin Activity Logs
-- Error Tracking
-- Download History
-- User Activity Logs
-- System Health Monitoring
+### Advanced Download Features:
+- Batch downloading with multiple links at once
+- Smart retry system that automatically resumes failed downloads
+- JDownloader integration supporting over 1000 websites
+- Password protected file support
+- Resume support for interrupted downloads
+- Speed control and limiting
+- Smart downloader with auto detection
 
 ---
 
-## 🎯 Unique Highlights
+## Upload System
 
-- AI Caption Generator — automatically creates captions for files
-- Smart File Organizer — organizes files by type and category
-- File Detective — deep file analysis with hash verification
-- Smart Scheduler — schedule tasks at specific times
-- Multi-Bot Support — run multiple bot instances
-- NSFW Detection — automatically filters inappropriate content
-- Web Dashboard — browser-based bot control
-- Advanced Analytics — deep insights and reports
+### Upload To:
+- Telegram as document, video, or audio
+- Google Drive
+- Team Drive
+- Any of 50 plus cloud services via Rclone
+- Dump channel
 
----
-
-## ⚙️ Tech Stack
-
-- Python 3.11+
-- Pyrogram
-- MongoDB
-- Redis
-- Aria2
-- Qbittorrent
-- Rclone
-- YT-DLP
-- Docker
+### Advanced Upload Features:
+- Custom thumbnail support
+- HD thumbnail auto generation (1280x720)
+- Custom caption support
+- AI-powered caption generation
+- Automatic splitting of large files (2GB to 4GB)
+- Multiple upload modes
+- Link generator for shared downloads
+- Automatic upload after download completion
 
 ---
 
-## 📌 Requirements
+## Video Tools
 
-- Python 3.11 or higher
-- MongoDB Database
-- Telegram API Credentials
-- 2GB+ RAM
-- Stable Internet Connection
+- Video merge system
+- Video convert
+- Encode
+- Multi-resolution
+- HardSub
+- Watermark
+- Aspect ratio change
+- Audio extract
+- Video compress
+- Video and audio merge
+- Video and subtitle merge
+- Remove audio
+- Remove streams
+- Strip metadata
+- Extract subtitles and audio
+- Swap audio
 
 ---
 
-## 🛠 Deployment Options
+## Search System
 
-- Heroku
-- VPS (Virtual Private Server)
-- Docker
-- Local Machine
+- Torrent search across multiple engines
+- Image search with quality filters
+- Multi-source search
+- Category filtering
+- Seeder and leecher filtering
+- Instant download from search results
 
 ---
 
-## 📄 License
+## Security System
 
+- NSFW content detection
+- 18+ content filtering
+- Spam detection
+- Abusive content filtering
+- Malware and virus scanning
+- File health checking
+- Force subscribe system
+- Rate limiting
+- Permission-based access control
+
+---
+
+## AI-Powered Features
+
+### AI Caption Generator
+Automatically creates captions for files by detecting category and quality.
+
+### Smart File Organizer
+Organizes files automatically by type and category.
+
+### File Detective
+Performs deep file analysis including magic byte detection and hash verification.
+
+### Smart Scheduler
+Allows scheduling of tasks at specific times.
+
+### Smart Retry System
+Automatically retries failed downloads with exponential backoff.
+
+### Auto Recovery
+Automatically recovers from crashes and errors.
+
+---
+
+## User Management
+
+### Premium System
+- Weekly, monthly, and yearly plans
+- Priority queue for premium users
+- Speed boost
+- Unlimited task limits
+- VIP support
+
+### Session String
+- 4GB split size support
+- Faster upload speed
+- Premium features access
+
+### Admin System
+- Complete owner panel
+- Sudo user management
+- Admin controls
+- Permission levels
+- Admin activity logs
+
+---
+
+## Settings System
+
+### User Settings (/usetting)
+- Leech settings
+- General settings
+- Private files management
+
+### Bot Settings (/bsetting)
+- 15 pages of config variables
+- 5 pages of Aria2 settings
+- Private files management
+- JD account management
+
+---
+
+## Commands
+/start - Start the bot
+/help - View help menu
+/mirror - Mirror files to cloud
+/leech - Leech files to Telegram
+/qbleech - Queue batch leech
+/qbmirror - Queue batch mirror
+/ytdlleech - YouTube leech
+/yt-dl - YouTube download
+/jdmirror - JD mirror
+/jdleech - JD leech
+/rclone - Rclone operations
+/usetting - User settings
+/bsetting - Bot settings
+/thumb - Set thumbnail
+/restart - Restart bot
+/cancelalltask - Cancel all tasks
+/stats - User statistics
+/mysession - Check session status
+
+
+---
+
+## Deployment
+
+### VPS Deploy
+
+```bash
+apt update -y && apt install python3 python3-pip git ffmpeg screen -y
+cd /root
+git clone https://github.com/obscure-n8/ZxZone-MLB.git
+cd ZxZone-MLB
+pip3 install -r requirements.txt
+cp .env.example .env
+nano .env
+screen -S bot
+python3 -m bot
+
+Heroku Deploy
+Click the deploy button or use Heroku CLI:
+
+bash
+heroku create your-bot-name
+git push heroku main
+heroku ps:scale web=1 worker=1
+
+Railway Deploy
+Go to Railway
+
+Deploy from GitHub
+
+Select this repo
+
+Add environment variables
+
+Deploy
+
+Docker Deploy
+bash
+docker build -t zxzone-mlb .
+docker run -d --name zxzone-mlb \
+  -e BOT_TOKEN=your_token \
+  -e API_ID=your_api_id \
+  -e API_HASH=your_api_hash \
+  -e OWNER_ID=your_id \
+  -e DATABASE_URL=mongodb_url \
+  zxzone-mlb
+Environment Variables
+Variable	Description	Required
+BOT_TOKEN	Telegram Bot Token	Yes
+API_ID	Telegram API ID	Yes
+API_HASH	Telegram API Hash	Yes
+OWNER_ID	Your Telegram ID	Yes
+DATABASE_URL	MongoDB URL	Yes
+BOT_USERNAME	Bot Username	No
+UPDATE_CHANNEL	Update Channel Link	No
+REPO_LINK	Repository Link	No
+MongoDB Setup
+Go to MongoDB Atlas
+
+Create free account
+
+Create free cluster (M0)
+
+Create database user
+
+Allow all IPs (0.0.0.0/0)
+
+Copy connection string
+
+Use in DATABASE_URL
+
+Telegram Info
+BOT_TOKEN: @BotFather
+
+API_ID & API_HASH: my.telegram.org
+
+OWNER_ID: @userinfobot
+
+Supported Platforms
+Telegram
+
+Google Drive
+
+Mega
+
+Gofile
+
+Pixeldrain
+
+Dropbox
+
+OneDrive
+
+YouTube
+
+Torrents
+
+Direct Links
+
+Icc.Tv
+
+Viking Files
+
+Tech Stack
+Python 3.11+
+
+Pyrogram
+
+MongoDB
+
+Redis
+
+Aria2
+
+Qbittorrent
+
+Rclone
+
+YT-DLP
+
+FFmpeg
+
+Docker
+
+Performance
+Handles 50 to 70 concurrent tasks
+
+High-speed downloads
+
+Parallel processing
+
+Automatic recovery
+
+VPS full power mode
+
+Heroku optimized mode
+
+Credits
+Powered By Zonexus Hub
+
+Channel: https://t.me/zxzoneupdates
+
+Repo: https://github.com/obscure-n8/ZxZone-MLB
+
+License
 MIT License
 
----
-
-## ⚠️ Disclaimer
-
+Disclaimer
 This bot is for educational purposes only. Use responsibly.
-
----
-
-## 🎯 Credits
-
-**Powered By Zonexus Hub** ❞
