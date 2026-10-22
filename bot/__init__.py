@@ -91,28 +91,6 @@ task_dict = {}
 rss_dict = {}
 bot_dict = {}
 
-VID_MODE = {
-    "vid_vid": "Video + Video",
-    "vid_aud": "Video + Audio",
-    "vid_sub": "Video + Subtitle",
-    "subsync": "SubSync",
-    "compress": "Compress",
-    "convert": "Convert",
-    "watermark": "Watermark",
-    "extract": "Extract",
-    "trim": "Trim",
-    "rmstream": "Remove Stream",
-    "speed": "Speed Adjust",
-    "gif": "Video to GIF",
-    "crop": "Crop / Aspect",
-    "filters": "Video Filters",
-    "multires": "Multi-Resolution",
-    "introsub": "IntroSub",
-    "metadata": "Strip Metadata",
-    "swapaud": "Swap Audio",
-    "transsub": "Translate Subs",
-}
-
 DEFAULT_SPLIT_SIZE = 2097151000
 ARIA_NAME = environ.get("ARIA_NAME", "wz2c")
 QBIT_NAME = environ.get("QBIT_NAME", "wznox")
@@ -426,63 +404,6 @@ FSUB_BUTTON_NAME = environ.get("FSUB_BUTTON_NAME", "Join Channel")
 CHANNEL_USERNAME = environ.get("CHANNEL_USERNAME", "zonexusmlgroup4gb")
 # ======================================================================
 
-
-# ============================ IMAGES ==================================
-# All image URLs removed — features effectively disabled
-images = ""
-ENABLE_IMAGE_MODE = False
-IMAGE_ARIA = ""
-IMAGE_AUTH = ""
-IMAGE_BOLD = ""
-IMAGE_BYE = ""
-IMAGE_CANCEL = ""
-IMAGE_CAPTION = ""
-IMAGE_COMMONS_CHECK = ""
-IMAGE_COMPLETE = ""
-IMAGE_CONEDIT = ""
-IMAGE_CONPRIVATE = ""
-IMAGE_CONSET = ""
-IMAGE_CONVIEW = ""
-IMAGE_DUMP = ""
-IMAGE_EXTENSION = ""
-IMAGE_GD = ""
-IMAGE_HELP = ""
-IMAGE_HTML = ""
-IMAGE_IMDB = ""
-IMAGE_INFO = ""
-IMAGE_ITALIC = ""
-IMAGE_JD = ""
-IMAGE_LOGS = ""
-IMAGE_MDL = ""
-IMAGE_MEDINFO = ""
-IMAGE_METADATA = ""
-IMAGE_MONO = ""
-IMAGE_NORMAL = ""
-IMAGE_OWNER = ""
-IMAGE_PAUSE = ""
-IMAGE_PRENAME = ""
-IMAGE_QBIT = ""
-IMAGE_RCLONE = ""
-IMAGE_REMNAME = ""
-IMAGE_RSS = ""
-IMAGE_SEARCH = ""
-IMAGE_STATS = ""
-IMAGE_STATUS = ""
-IMAGE_SUFNAME = ""
-IMAGE_TMDB = ""
-IMAGE_TXT = ""
-IMAGE_UNAUTH = ""
-IMAGE_UNKNOW = ""
-IMAGE_USER = ""
-IMAGE_USETIINGS = ""
-IMAGE_VIDTOOLS = ""
-IMAGE_WEL = ""
-IMAGE_WIBU = ""
-IMAGE_YT = ""
-IMAGE_ZIP = ""
-# ======================================================================
-
-
 # ============================ STICKERS ================================
 STICKERID_COUNT = environ.get("STICKERID_COUNT", "")
 STICKERID_ERROR = environ.get("STICKERID_ERROR", "")
@@ -700,57 +621,7 @@ config_dict = {
     "STICKERID_ERROR": STICKERID_ERROR,
     "STICKERID_LEECH": STICKERID_LEECH,
     "STICKERID_MIRROR": STICKERID_MIRROR,
-    # IMAGES
-    "ENABLE_IMAGE_MODE": ENABLE_IMAGE_MODE,
-    "IMAGE_ARIA": IMAGE_ARIA,
-    "IMAGE_AUTH": IMAGE_AUTH,
-    "IMAGE_BOLD": IMAGE_BOLD,
-    "IMAGE_BYE": IMAGE_BYE,
-    "IMAGE_CANCEL": IMAGE_CANCEL,
-    "IMAGE_CAPTION": IMAGE_CAPTION,
-    "IMAGE_COMPLETE": IMAGE_COMPLETE,
-    "IMAGE_CONEDIT": IMAGE_CONEDIT,
-    "IMAGE_CONPRIVATE": IMAGE_CONPRIVATE,
-    "IMAGE_CONSET": IMAGE_CONSET,
-    "IMAGE_CONVIEW": IMAGE_CONVIEW,
-    "IMAGE_DUMP": IMAGE_DUMP,
-    "IMAGE_COMMONS_CHECK": IMAGE_COMMONS_CHECK,
-    "IMAGE_EXTENSION": IMAGE_EXTENSION,
-    "IMAGE_GD": IMAGE_GD,
-    "IMAGE_HELP": IMAGE_HELP,
-    "IMAGE_HTML": IMAGE_HTML,
-    "IMAGE_IMDB": IMAGE_IMDB,
-    "IMAGE_INFO": IMAGE_INFO,
-    "IMAGE_ITALIC": IMAGE_ITALIC,
-    "IMAGE_JD": IMAGE_JD,
-    "IMAGE_LOGS": IMAGE_LOGS,
-    "IMAGE_MDL": IMAGE_MDL,
-    "IMAGE_MEDINFO": IMAGE_MEDINFO,
-    "IMAGE_METADATA": IMAGE_METADATA,
-    "IMAGE_MONO": IMAGE_MONO,
-    "IMAGE_NORMAL": IMAGE_NORMAL,
-    "IMAGE_OWNER": IMAGE_OWNER,
-    "IMAGE_PAUSE": IMAGE_PAUSE,
-    "IMAGE_PRENAME": IMAGE_PRENAME,
-    "IMAGE_QBIT": IMAGE_QBIT,
-    "IMAGE_RCLONE": IMAGE_RCLONE,
-    "IMAGE_REMNAME": IMAGE_REMNAME,
-    "IMAGE_RSS": IMAGE_RSS,
-    "IMAGE_SEARCH": IMAGE_SEARCH,
-    "IMAGE_STATS": IMAGE_STATS,
-    "IMAGE_STATUS": IMAGE_STATUS,
-    "IMAGE_SUFNAME": IMAGE_SUFNAME,
-    "IMAGE_TMDB": IMAGE_TMDB,
-    "IMAGE_TXT": IMAGE_TXT,
-    "IMAGE_UNAUTH": IMAGE_UNAUTH,
-    "IMAGE_UNKNOW": IMAGE_UNKNOW,
-    "IMAGE_USER": IMAGE_USER,
-    "IMAGE_USETIINGS": IMAGE_USETIINGS,
-    "IMAGE_VIDTOOLS": IMAGE_VIDTOOLS,
-    "IMAGE_WEL": IMAGE_WEL,
-    "IMAGE_WIBU": IMAGE_WIBU,
-    "IMAGE_YT": IMAGE_YT,
-    "IMAGE_ZIP": IMAGE_ZIP,
+   
     # ACCOUNTS
     "JD_EMAIL": JD_EMAIL,
     "JD_PASS": JD_PASS,
