@@ -1,0 +1,3 @@
+aria2
+qbittorrent-nox
+ffmpeg
