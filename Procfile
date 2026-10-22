@@ -1,1 +1,1 @@
-web: python3 -m bot.core.client
+web: /bin/bash /app/start.sh
