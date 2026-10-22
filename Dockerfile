@@ -23,12 +23,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Aria2
-RUN apt-get update && apt-get install -y --no-install-recommends aria2 \
+# Install Aria2 AND qBittorrent-nox (Added as per requirement)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    aria2 \
+    qbittorrent-nox \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Rclone
-RUN curl -O https://downloads.rclone.org/rclone-current-linux-amd64.zip \
+RUN curl -O https://rclone.org \
     && unzip rclone-current-linux-amd64.zip \
     && cd rclone-*-linux-amd64 \
     && cp rclone /usr/local/bin/ \
@@ -53,12 +55,12 @@ COPY . .
 RUN mkdir -p /app/downloads /app/encode /app/thumbnails /app/config /app/sessions /app/data/logs /app/data/backups \
     && chmod -R 755 /app
 
-# Copy start script
+# Copy start script and make it executable
 COPY start.sh /app/start.sh
 RUN chmod +x /app/start.sh
 
-# Expose port for web server
+# Expose port for Heroku Web process
 EXPOSE 8080
 
-# Start bot via start.sh
+# Start everything via start.sh (Which handles Web process binding)
 CMD ["/bin/bash", "/app/start.sh"]
