@@ -45,14 +45,15 @@ jobs:
       - name: Deploy Repo to Heroku
         uses: akhileshns/heroku-deploy@v3.13.15
         with:
-          heroku_api_key: ${{inputs.HEROKU_API_KEY}}
-          heroku_app_name: ${{inputs.HEROKU_APP_NAME}}
-          heroku_email: ${{inputs.HEROKU_EMAIL}}
+          heroku_api_key: ${{ github.event.inputs.HEROKU_API_KEY }}
+          heroku_app_name: ${{ github.event.inputs.HEROKU_APP_NAME }}
+          heroku_email: ${{ github.event.inputs.HEROKU_EMAIL }}
           usedocker: true
           docker_heroku_process_type: web
           stack: "container"
-        env:
-          BOT_TOKEN: ${{inputs.BOT_TOKEN}}
-          OWNER_ID: ${{inputs.OWNER_ID}}
-          API_ID: ${{inputs.API_ID}}
-          API_HASH: ${{inputs.API_HASH}}
+          # config_vars ব্যবহার করে বটের ভেরিয়েবলগুলো ডকার কন্টেইনারে পাঠানো হলো
+          config_vars: |
+            BOT_TOKEN=${{ github.event.inputs.BOT_TOKEN }}
+            OWNER_ID=${{ github.event.inputs.OWNER_ID }}
+            API_ID=${{ github.event.inputs.API_ID }}
+            API_HASH=${{ github.event.inputs.API_HASH }}
