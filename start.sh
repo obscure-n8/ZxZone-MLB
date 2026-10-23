@@ -13,7 +13,7 @@ export PORT=${PORT:-8080}
 # Create necessary directories
 mkdir -p /app/downloads /app/encode /app/thumbnails /app/config /app/sessions /app/data/logs
 
-# 1. Start Aria2 in background (Heroku-র জন্য --rpc-listen-all=true দেওয়া ভালো)
+# 1. Start Aria2 in background 
 if command -v aria2c &> /dev/null; then
     echo "Starting Aria2..."
     aria2c --enable-rpc \
@@ -30,7 +30,7 @@ else
     echo "Aria2 not found, skipping..."
 fi
 
-# 2. Start qBittorrent in background (আপনার রিকোয়ারমেন্ট অনুযায়ী qBit ইঞ্জিন যুক্ত করা হলো)
+# 2. Start qBittorrent in background 
 if command -v qbittorrent-nox &> /dev/null; then
     echo "Starting qBittorrent-nox..."
     qbittorrent-nox -d > /dev/null 2>&1
@@ -48,7 +48,7 @@ echo "Web server started on port $PORT"
 # Wait for web server to be ready
 sleep 3
 
-# 3. Start main bot (আপনার মডিউলার স্ট্রাকচার অনুযায়ী bot.core.client রান করা হলো)
+# 3. Start main bot 
 echo "Starting Telegram Bot..."
 python3 -m bot.core.client
 
