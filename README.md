@@ -86,7 +86,7 @@ Click the button below to deploy directly via the Heroku web dashboard:
 </details>
 
 ## Credits & Moderation 👑
-* **Obscur-n8** — The lead moderator who re-engineered and optimized this entire build to make it perfectly **Heroku-friendly** and stable.
+* **Obscure-n8** — The lead moderator who re-engineered and optimized this entire build to make it perfectly **Heroku-friendly** and stable.
 * **WZML-X & Anasty** — For the incredible base frameworks and foundational features.
 
 ## Disclaimer ⚠️
