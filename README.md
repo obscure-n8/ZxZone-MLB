@@ -1,6 +1,20 @@
+<div align="center">
+
 # Ultra Hybrid Heroku Mirror Leech Bot 🚀
 
-The ultimate high-performance Mirror Leech Bot, expertly crafted by combining the best features of **WZML-X** and **Anasty**. This repository is engineered from the ground up to be the **absolute best choice for Heroku deployments**, seamlessly packing every premium facility you need into a single, stable build.
+<!-- ZxZone Style Premium Dynamic Badges -->
+![](https://shields.io)
+![](https://shields.io)
+![](https://shields.io)
+![](https://shields.io)
+![](https://shields.io)
+
+<p align="center">
+  <b>The ultimate high-performance Mirror Leech Bot, expertly crafted by combining WZML-X and Anasty for Heroku.</b>
+</p>
+
+---
+</div>
 
 ## Why Choose This Repository? 🤔
 Deploying advanced leech bots on Heroku can be challenging due to resource constraints and dyno limits. This repo bridges that gap by offering a fully optimized, hybrid environment that ensures maximum stability, speed, and efficiency on Heroku.
@@ -25,44 +39,55 @@ Deploying advanced leech bots on Heroku can be challenging due to resource const
 
 ## Deployment 🛠️
 
-### Deploy to Heroku
-### 2️⃣ ***METHOD 2: (Github Workflow Guide)***
+### 1️⃣ Method 1: One-Click Deploy (Direct)
+Click the button below to deploy directly via the Heroku web dashboard:
+
+[![Deploy](https://herokucdn.com)](https://heroku.com)
+
+---
+
+### 2️⃣ Method 2: GitHub Workflow Guide
 
 <details>
   <summary><b>Expand All Steps to Deploy <sup><kbd>Click Here</kbd></sup></b></summary>
+  <br>
 
-**Step 1 :** Fork and Star the Repository
+**Step 1: Fork and Star the Repository**
+* Click the **Fork** button at the top-right corner of this repository.
+* *Star the repository to show your support!*
 
-  - Click the **Fork** button at the top-right corner of this repository.
-    > Star the repository to show your support.
+**Step 2: Navigate to Your Forked Repository**
+* Open your personal GitHub profile and access your newly forked version of this repository.
 
-**Step 2 :** Navigate to Your Forked Repository
+**Step 3: Enable GitHub Actions**
+* Go to the **Settings** tab of your forked repository.
+* Navigate to **Actions** > **General** and ensure actions are enabled for your repo.
 
-- Access your forked version of the repository.
+**Step 4: Run the Deployment Workflow**
+1. Open the **Actions** tab at the top of your repository.
+2. Select the `Deploy to Heroku` workflow from the left sidebar.
+3. Click the **Run workflow** dropdown menu and fill out the required input variables:
 
-**Step 3 :** Enable `GitHub Actions` for your repo
+| Variable | Description |
+| :--- | :--- |
+| **BOT_TOKEN** | Your Telegram bot token from [@BotFather](https://t.me). |
+| **OWNER_ID** | Your unique Telegram User ID. |
+| **DATABASE_URL** | Your MongoDB connection string. |
+| **TELEGRAM_API** | Telegram API ID obtained from [my.telegram.org](https://telegram.org). |
+| **TELEGRAM_HASH** | Telegram API Hash obtained from [my.telegram.org](https://telegram.org). |
+| **HEROKU_APP_NAME** | The exact name of your created Heroku application. |
+| **HEROKU_EMAIL** | The email address associated with your Heroku account. |
+| **HEROKU_API_KEY** | Your account API key generated from Heroku Account Settings. |
+| **HEROKU_TEAM_NAME** | *(Optional)* Required only if deploying under a Heroku Team account. |
+| **UPSTREAM_REPO** | The upstream URL of your Fork or your Main Repository. |
 
-- Go to the **Settings** tab of your forked repository.
-- Enable **Actions** by selecting the appropriate option in the settings.
+4. Click the green **Run workflow** button and wait for the process to complete successfully.
 
-**Step 4 :** Run the Deployment Workflow to Deploy
+</details>
 
-  1. Open the **Actions** tab.
-  2. Select the `Deploy to Heroku` workflow from the available list.
-  3. Click **Run workflow** and fill out the required inputs:
-     
-   - **BOT_TOKEN**: Your Telegram bot token.
-   - **OWNER_ID**: Your Telegram ID.
-   - **DATABASE_URL**: MongoDB connection string.
-   - **TELEGRAM_API**: Telegram API ID (from [my.telegram.org](https://my.telegram.org/)).
-   - **TELEGRAM_HASH**: Telegram API hash (from [my.telegram.org](https://my.telegram.org/)).
-   - **HEROKU_APP_NAME**: Name of your Heroku app.
-   - **HEROKU_EMAIL**: Email address associated with your Heroku account.
-   - **HEROKU_API_KEY**: API key from your Heroku account.
-   - **HEROKU_TEAM_NAME** (Optional): Required only if deploying under a Heroku team account.
-   - **UPSTREAM_REPO**: Upstream Repo of your Fork or Main Repo
-     
-  4. Run the workflow and wait for it to complete.
 ## Credits & Moderation 👑
 * **Obscur-n8** — The lead moderator who re-engineered and optimized this entire build to make it perfectly **Heroku-friendly** and stable.
-* **WZML-X & Anasty** — For the incredible base frameworks and features.
+* **WZML-X & Anasty** — For the incredible base frameworks and foundational features.
+
+## Disclaimer ⚠️
+This project is intended for personal use and educational purposes only. Please strictly adhere to Heroku's Terms of Service regarding automatic resource usage and bandwidth limits.
