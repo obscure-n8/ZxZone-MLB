@@ -117,6 +117,7 @@ def arg_parser(items, arg_base):
         "-bt",
         "-ad",
         "-tb",
+        "-vt",
     }
 
     while i < total:
