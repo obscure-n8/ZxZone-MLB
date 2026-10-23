@@ -27,6 +27,12 @@ class MirrorStatus:
     STATUS_SAMVID = "SamVid"
     STATUS_CONVERT = "Convert"
     STATUS_FFMPEG = "FFmpeg"
+    STATUS_METADATA = "Metadata"
+    STATUS_VT_ENCODE = "VT Encode"
+    STATUS_VT_CONVERT = "VT Convert"
+    STATUS_VT_MULTIRES = "VT MultiRes"
+    STATUS_VT_MERGE = "VT Merge"
+    STATUS_VT_MUXAUDIO = "VT MuxAudio"
 
 
 STATUSES = {
@@ -262,7 +268,7 @@ async def get_readable_message(sid, is_user, page_no=1, status="All", page_step=
             msg = f"No Active {status} Tasks!<br><br>"
     buttons = ButtonMaker()
     if not is_user:
-        buttons.data_button("📜", f"status {sid} ov", position="header")
+        buttons.data_button("☲", f"status {sid} ov", position="header")
     if len(tasks) > STATUS_LIMIT:
         msg += f"<b>Page:</b> {page_no}/{pages} | <b>Tasks:</b> {tasks_no} | <b>Step:</b> {page_step}<br>"
         buttons.data_button("<<", f"status {sid} pre", position="header")
