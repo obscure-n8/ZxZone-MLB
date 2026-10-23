@@ -63,8 +63,6 @@ Deploying advanced leech bots on Heroku can be challenging due to resource const
    - **UPSTREAM_REPO**: Upstream Repo of your Fork or Main Repo
      
   4. Run the workflow and wait for it to complete.
-## Moderator 
-
----
-
-- **Obscure-n8**
+## Credits & Moderation 👑
+* **Obscur-n8** — The lead moderator who re-engineered and optimized this entire build to make it perfectly **Heroku-friendly** and stable.
+* **WZML-X & Anasty** — For the incredible base frameworks and features.
