@@ -67,4 +67,4 @@ Deploying advanced leech bots on Heroku can be challenging due to resource const
 
 ---
 
-Obscure-nu
+- **Obscure-n8**
