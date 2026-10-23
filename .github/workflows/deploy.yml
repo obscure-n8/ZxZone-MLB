@@ -51,7 +51,7 @@ jobs:
           usedocker: true
           docker_heroku_process_type: web
           stack: "container"
-          # config_vars ব্যবহার করে বটের ভেরিয়েবলগুলো ডকার কন্টেইনারে পাঠানো হলো
+          
           config_vars: |
             BOT_TOKEN=${{ github.event.inputs.BOT_TOKEN }}
             OWNER_ID=${{ github.event.inputs.OWNER_ID }}
