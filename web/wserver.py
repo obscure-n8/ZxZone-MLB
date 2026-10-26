@@ -257,6 +257,7 @@ async def set_aria2(gid, selected_files):
 
 
 @app.get("/", response_class=HTMLResponse)
+<<<<<<< HEAD
 async def homepage(request: Request):
     return templates.TemplateResponse(request, "landing.html")
 
@@ -319,6 +320,13 @@ async def protected_proxy(
     body = await request.body()
     return await proxy_fetch(
         request.method, url, headers, dict(request.query_params), body, f"/{service}"
+=======
+async def homepage():
+    return (
+        "<h1>See Your Leech Bot "
+        "<a href='https://github.com/obscure-n8/ZxZone-MLB'>@GitHub</a> "
+        "By <a href='https://github.com/obscure-n8'>Obscure</a></h1>"
+>>>>>>> dc9f6270dd208eb8a6a5a49f09fd36dc91a1f363
     )
 
 

@@ -131,6 +131,7 @@ class Mirror(TaskListener):
             "-ns": "",
             "-tl": "",
             "-ff": set(),
+            "-vt": False,
         }
 
         arg_parser(input_list[1:], args)
@@ -175,7 +176,12 @@ class Mirror(TaskListener):
         self.force_upload = args["-fu"]
         self.convert_audio = args["-ca"]
         self.convert_video = args["-cv"]
+<<<<<<< HEAD
         self.name_swap = args["-ns"]
+=======
+        self.video_tool = args["-vt"]
+        self.name_sub = args["-ns"]
+>>>>>>> dc9f6270dd208eb8a6a5a49f09fd36dc91a1f363
         self.hybrid_leech = args["-hl"]
         self.thumbnail_layout = args["-tl"]
         self.as_doc = args["-doc"]

@@ -1,7 +1,10 @@
 from httpx import AsyncClient
 from html import escape
 from urllib.parse import quote
+<<<<<<< HEAD
 from pyrogram.enums import ButtonStyle
+=======
+>>>>>>> dc9f6270dd208eb8a6a5a49f09fd36dc91a1f363
 
 from .. import LOGGER
 from ..core.config_manager import Config
@@ -18,9 +21,12 @@ TELEGRAPH_LIMIT = 300
 
 
 async def initiate_search_tools():
+<<<<<<< HEAD
     if Config.DISABLE_TORRENTS:
         LOGGER.warning("Torrents are disabled. Skipping search plugin initialization.")
         return
+=======
+>>>>>>> dc9f6270dd208eb8a6a5a49f09fd36dc91a1f363
     qb_plugins = await TorrentManager.qbittorrent.search.plugins()
     if qb_plugins:
         names = [plugin.name for plugin in qb_plugins]
@@ -116,7 +122,11 @@ async def search(key, site, message, method):
         await TorrentManager.qbittorrent.search.delete(search_id)
     link = await get_result(search_results, key, message, method)
     buttons = ButtonMaker()
+<<<<<<< HEAD
     buttons.url_button("🔎 VIEW", link, style=ButtonStyle.PRIMARY)
+=======
+    buttons.url_button("🔎 VIEW", link)
+>>>>>>> dc9f6270dd208eb8a6a5a49f09fd36dc91a1f363
     button = buttons.build_menu(1)
     await edit_message(message, msg, button)
 
@@ -150,7 +160,11 @@ async def get_result(search_results, key, message, method):
                     msg += f"<b>Size: </b>{result['size']}<br>"
                     try:
                         msg += f"<b>Seeders: </b>{result['seeders']} | <b>Leechers: </b>{result['leechers']}<br>"
+<<<<<<< HEAD
                     except Exception:
+=======
+                    except:
+>>>>>>> dc9f6270dd208eb8a6a5a49f09fd36dc91a1f363
                         pass
                     if "torrent" in result.keys():
                         msg += f"<a href='{result['torrent']}'>Direct Link</a><br><br>"
@@ -159,7 +173,11 @@ async def get_result(search_results, key, message, method):
                         msg += f"<a href='http://t.me/share/url?url={quote(result['magnet'])}'>Telegram</a><br><br>"
                     else:
                         msg += "<br>"
+<<<<<<< HEAD
             except Exception:
+=======
+            except:
+>>>>>>> dc9f6270dd208eb8a6a5a49f09fd36dc91a1f363
                 continue
         else:
             msg += f"<a href='{result.descrLink}'>{escape(result.fileName)}</a><br>"

@@ -1,5 +1,9 @@
 from aiofiles.os import remove, path as aiopath
+<<<<<<< HEAD
 from asyncio import iscoroutinefunction
+=======
+from inspect import iscoroutinefunction
+>>>>>>> dc9f6270dd208eb8a6a5a49f09fd36dc91a1f363
 
 from .. import (
     task_dict,
@@ -10,6 +14,10 @@ from .. import (
 )
 from ..core.config_manager import Config
 from ..core.torrent_manager import TorrentManager
+<<<<<<< HEAD
+=======
+from ..core.telegram_manager import TgClient
+>>>>>>> dc9f6270dd208eb8a6a5a49f09fd36dc91a1f363
 from ..helper.ext_utils.bot_utils import (
     bt_selection_buttons,
     new_task,
@@ -57,7 +65,11 @@ async def select(_, message):
         await send_message(message, "This task is not for you!")
         return
     if not iscoroutinefunction(task.status):
+<<<<<<< HEAD
         await send_message(message, "The task have finshed the download stage!")
+=======
+        await send_message(message, "The task have finished the download stage!")
+>>>>>>> dc9f6270dd208eb8a6a5a49f09fd36dc91a1f363
         return
     if await task.status() not in [
         MirrorStatus.STATUS_DOWNLOAD,
@@ -82,15 +94,26 @@ async def select(_, message):
             elif task.listener.is_qbit:
                 id_ = task.hash()
                 await TorrentManager.qbittorrent.torrents.stop([id_])
+<<<<<<< HEAD
             else:
+=======
+            elif task.listener.is_torrent:
+>>>>>>> dc9f6270dd208eb8a6a5a49f09fd36dc91a1f363
                 try:
                     await TorrentManager.aria2.forcePause(id_)
                 except Exception as e:
                     LOGGER.error(
                         f"{e} Error in pause, this mostly happens after abuse aria2"
                     )
+<<<<<<< HEAD
         task.listener.select = True
     except Exception:
+=======
+            else:
+                raise Exception("Unsupported task type")
+        task.listener.select = True
+    except:
+>>>>>>> dc9f6270dd208eb8a6a5a49f09fd36dc91a1f363
         await send_message(message, "This is not a bittorrent or sabnzbd task!")
         return
 
@@ -99,11 +122,81 @@ async def select(_, message):
     await send_message(message, msg, SBUTTONS)
 
 
+<<<<<<< HEAD
+=======
+async def select_callback(query):
+    data = query.data.split()
+    user_id = query.from_user.id
+    task = await get_task_by_gid(data[2])
+    if (
+        Config.OWNER_ID != user_id
+        and task.listener.user_id != user_id
+        and (user_id not in user_data or not user_data[user_id].get("SUDO"))
+    ):
+        await query.answer("This task is not for you!", show_alert=True)
+        return
+    if not iscoroutinefunction(task.status):
+        await query.answer(
+            "The task have finished the download stage!", show_alert=True
+        )
+        return
+    if await task.status() not in [
+        MirrorStatus.STATUS_DOWNLOAD,
+        MirrorStatus.STATUS_PAUSED,
+        MirrorStatus.STATUS_QUEUEDL,
+    ]:
+        await query.answer(
+            "Task should be in download, pause or queued status", show_alert=True
+        )
+        return
+    if task.name().startswith("[METADATA]") or task.name().startswith("Trying"):
+        await query.answer("Try after downloading metadata finished!", show_alert=True)
+        return
+    try:
+        if not task.queued:
+            await task.update()
+            id_ = task.gid()
+            if task.listener.is_nzb:
+                await sabnzbd_client.pause_job(id_)
+            elif task.listener.is_qbit:
+                id_ = task.hash()
+                await TorrentManager.qbittorrent.torrents.stop([id_])
+            elif task.listener.is_torrent:
+                try:
+                    await TorrentManager.aria2.forcePause(id_)
+                except Exception as e:
+                    LOGGER.error(
+                        f"{e} Error in pause, this mostly happens after abuse aria2"
+                    )
+            else:
+                raise Exception("Unsupported task type")
+        task.listener.select = True
+    except:
+        await query.answer("This is not a bittorrent or sabnzbd task!", show_alert=True)
+        return
+    await query.answer()
+    SBUTTONS = bt_selection_buttons(id_)
+    msg = "Your download paused. Choose files then press Done Selecting button to resume downloading."
+    cmd_msg = (
+        await TgClient.bot.get_messages(query.message.chat.id, task.listener.mid)
+        or query.message
+    )
+    await send_message(cmd_msg, msg, SBUTTONS)
+
+
+>>>>>>> dc9f6270dd208eb8a6a5a49f09fd36dc91a1f363
 @new_task
 async def confirm_selection(_, query):
     user_id = query.from_user.id
     data = query.data.split()
     message = query.message
+<<<<<<< HEAD
+=======
+    if len(data) < 3:
+        await query.answer()
+        await delete_message(message)
+        return
+>>>>>>> dc9f6270dd208eb8a6a5a49f09fd36dc91a1f363
     task = await get_task_by_gid(data[2])
     if task is None:
         await query.answer("This task has been cancelled!", show_alert=True)
@@ -111,6 +204,11 @@ async def confirm_selection(_, query):
         return
     if user_id != task.listener.user_id:
         await query.answer("This task is not for you!", show_alert=True)
+<<<<<<< HEAD
+=======
+    elif data[1] == "select":
+        await select_callback(query)
+>>>>>>> dc9f6270dd208eb8a6a5a49f09fd36dc91a1f363
     elif data[1] == "pin":
         await query.answer(data[3], show_alert=True)
     elif data[1] == "done":
@@ -130,7 +228,11 @@ async def confirm_selection(_, query):
                             if await aiopath.exists(f_path):
                                 try:
                                     await remove(f_path)
+<<<<<<< HEAD
                                 except Exception:
+=======
+                                except:
+>>>>>>> dc9f6270dd208eb8a6a5a49f09fd36dc91a1f363
                                     pass
                 if not task.queued:
                     await TorrentManager.qbittorrent.torrents.start([id_])
@@ -140,7 +242,11 @@ async def confirm_selection(_, query):
                     if f["selected"] == "false" and await aiopath.exists(f["path"]):
                         try:
                             await remove(f["path"])
+<<<<<<< HEAD
                         except Exception:
+=======
+                        except:
+>>>>>>> dc9f6270dd208eb8a6a5a49f09fd36dc91a1f363
                             pass
                 if not task.queued:
                     try:
@@ -153,6 +259,9 @@ async def confirm_selection(_, query):
             await sabnzbd_client.resume_job(id_)
         await send_status_message(message)
         await delete_message(message)
+<<<<<<< HEAD
     else:
         await delete_message(message)
         await task.cancel_task()
+=======
+>>>>>>> dc9f6270dd208eb8a6a5a49f09fd36dc91a1f363

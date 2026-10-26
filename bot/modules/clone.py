@@ -1,5 +1,6 @@
 from asyncio import gather
 from json import loads
+<<<<<<< HEAD
 from secrets import token_hex
 
 from aiofiles.os import remove
@@ -25,6 +26,26 @@ from ..helper.ext_utils.task_manager import (
     limit_checker,
 )
 from ..helper.ext_utils.status_utils import get_readable_file_size
+=======
+from secrets import token_urlsafe
+from aiofiles.os import remove
+
+from .. import LOGGER, task_dict, task_dict_lock, bot_loop
+from ..helper.ext_utils.bot_utils import (
+    sync_to_async,
+    cmd_exec,
+    arg_parser,
+    COMMAND_USAGE,
+)
+from ..helper.ext_utils.exceptions import DirectDownloadLinkException
+from ..helper.ext_utils.links_utils import (
+    is_gdrive_link,
+    is_share_link,
+    is_rclone_path,
+    is_gdrive_id,
+)
+from ..helper.ext_utils.task_manager import stop_duplicate_check
+>>>>>>> dc9f6270dd208eb8a6a5a49f09fd36dc91a1f363
 from ..helper.listeners.task_listener import TaskListener
 from ..helper.mirror_leech_utils.download_utils.direct_link_generator import (
     direct_link_generator,
@@ -35,10 +56,15 @@ from ..helper.mirror_leech_utils.rclone_utils.transfer import RcloneTransferHelp
 from ..helper.mirror_leech_utils.status_utils.gdrive_status import GoogleDriveStatus
 from ..helper.mirror_leech_utils.status_utils.rclone_status import RcloneStatus
 from ..helper.telegram_helper.message_utils import (
+<<<<<<< HEAD
     auto_delete_message,
     delete_links,
     delete_message,
     send_message,
+=======
+    send_message,
+    delete_message,
+>>>>>>> dc9f6270dd208eb8a6a5a49f09fd36dc91a1f363
     send_status_message,
 )
 
@@ -48,10 +74,21 @@ class Clone(TaskListener):
         self,
         client,
         message,
+<<<<<<< HEAD
         bulk=None,
         multi_tag=None,
         options="",
         **kwargs,
+=======
+        _=None,
+        __=None,
+        ___=None,
+        ____=None,
+        _____=None,
+        bulk=None,
+        multi_tag=None,
+        options="",
+>>>>>>> dc9f6270dd208eb8a6a5a49f09fd36dc91a1f363
     ):
         if bulk is None:
             bulk = []
@@ -68,6 +105,7 @@ class Clone(TaskListener):
         text = self.message.text.split("\n")
         input_list = text[0].split(" ")
 
+<<<<<<< HEAD
         check_msg, check_button = await pre_task_check(self.message)
         if check_msg:
             await delete_links(self.message)
@@ -76,6 +114,8 @@ class Clone(TaskListener):
             )
             return
 
+=======
+>>>>>>> dc9f6270dd208eb8a6a5a49f09fd36dc91a1f363
         args = {
             "link": "",
             "-i": 0,
@@ -90,7 +130,11 @@ class Clone(TaskListener):
 
         try:
             self.multi = int(args["-i"])
+<<<<<<< HEAD
         except Exception:
+=======
+        except:
+>>>>>>> dc9f6270dd208eb8a6a5a49f09fd36dc91a1f363
             self.multi = 0
 
         self.up_dest = args["-up"]
@@ -125,19 +169,26 @@ class Clone(TaskListener):
             await send_message(
                 self.message, COMMAND_USAGE["clone"][0], COMMAND_USAGE["clone"][1]
             )
+<<<<<<< HEAD
             await delete_links(self.message)
+=======
+>>>>>>> dc9f6270dd208eb8a6a5a49f09fd36dc91a1f363
             return
         LOGGER.info(self.link)
         try:
             await self.before_start()
         except Exception as e:
             await send_message(self.message, e)
+<<<<<<< HEAD
             await delete_links(self.message)
             return
 
         self._set_mode_engine()
         await delete_links(self.message)
 
+=======
+            return
+>>>>>>> dc9f6270dd208eb8a6a5a49f09fd36dc91a1f363
         await self._proceed_to_clone(sync)
 
     async def _proceed_to_clone(self, sync):
@@ -161,6 +212,7 @@ class Clone(TaskListener):
             if msg:
                 await send_message(self.message, msg, button)
                 return
+<<<<<<< HEAD
             if limit_exceeded := await limit_checker(self):
                 await send_message(
                     self.message,
@@ -172,6 +224,8 @@ class Clone(TaskListener):
 {limit_exceeded}""",
                 )
                 return
+=======
+>>>>>>> dc9f6270dd208eb8a6a5a49f09fd36dc91a1f363
             await self.on_download_start()
             LOGGER.info(f"Clone Started: Name: {self.name} - Source: {self.link}")
             drive = GoogleDriveClone(self)
@@ -181,7 +235,11 @@ class Clone(TaskListener):
                 )
             else:
                 msg = ""
+<<<<<<< HEAD
                 gid = token_hex(5)
+=======
+                gid = token_urlsafe(12)
+>>>>>>> dc9f6270dd208eb8a6a5a49f09fd36dc91a1f363
                 async with task_dict_lock:
                     task_dict[self.mid] = GoogleDriveStatus(self, drive, gid, "cl")
                 if self.multi <= 1:
@@ -196,9 +254,15 @@ class Clone(TaskListener):
             )
             LOGGER.info(f"Cloning Done: {self.name}")
         elif is_rclone_path(self.link):
+<<<<<<< HEAD
             if self.link.startswith("mrcc:"):
                 self.link = self.link.replace("mrcc:", "", 1)
                 self.up_dest = self.up_dest.replace("mrcc:", "", 1)
+=======
+            if self.link.startswith("mt:"):
+                self.link = self.link.replace("mt:", "", 1)
+                self.up_dest = self.up_dest.replace("mt:", "", 1)
+>>>>>>> dc9f6270dd208eb8a6a5a49f09fd36dc91a1f363
                 config_path = f"rclone/{self.user_id}.conf"
             else:
                 config_path = "rclone.conf"
@@ -213,7 +277,11 @@ class Clone(TaskListener):
             else:
                 src_path = self.link
                 cmd = [
+<<<<<<< HEAD
                     BinConfig.RCLONE_NAME,
+=======
+                    "rclone",
+>>>>>>> dc9f6270dd208eb8a6a5a49f09fd36dc91a1f363
                     "lsjson",
                     "--fast-list",
                     "--stat",
@@ -247,7 +315,11 @@ class Clone(TaskListener):
             LOGGER.info(
                 f"Clone Started: Name: {self.name} - Source: {self.link} - Destination: {self.up_dest}"
             )
+<<<<<<< HEAD
             gid = token_hex(5)
+=======
+            gid = token_urlsafe(12)
+>>>>>>> dc9f6270dd208eb8a6a5a49f09fd36dc91a1f363
             async with task_dict_lock:
                 task_dict[self.mid] = RcloneStatus(self, RCTransfer, gid, "cl")
             if self.multi <= 1:
@@ -266,7 +338,11 @@ class Clone(TaskListener):
                 return
             LOGGER.info(f"Cloning Done: {self.name}")
             cmd1 = [
+<<<<<<< HEAD
                 BinConfig.RCLONE_NAME,
+=======
+                "rclone",
+>>>>>>> dc9f6270dd208eb8a6a5a49f09fd36dc91a1f363
                 "lsf",
                 "--fast-list",
                 "-R",
@@ -276,7 +352,11 @@ class Clone(TaskListener):
                 destination,
             ]
             cmd2 = [
+<<<<<<< HEAD
                 BinConfig.RCLONE_NAME,
+=======
+                "rclone",
+>>>>>>> dc9f6270dd208eb8a6a5a49f09fd36dc91a1f363
                 "lsf",
                 "--fast-list",
                 "-R",
@@ -286,7 +366,11 @@ class Clone(TaskListener):
                 destination,
             ]
             cmd3 = [
+<<<<<<< HEAD
                 BinConfig.RCLONE_NAME,
+=======
+                "rclone",
+>>>>>>> dc9f6270dd208eb8a6a5a49f09fd36dc91a1f363
                 "size",
                 "--fast-list",
                 "--json",

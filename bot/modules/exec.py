@@ -1,13 +1,23 @@
 from aiofiles import open as aiopen
+<<<<<<< HEAD
 from contextlib import redirect_stdout, suppress
+=======
+from contextlib import redirect_stdout
+>>>>>>> dc9f6270dd208eb8a6a5a49f09fd36dc91a1f363
 from io import StringIO, BytesIO
 from os import path as ospath, getcwd, chdir
 from textwrap import indent
 from traceback import format_exc
+<<<<<<< HEAD
 from re import match
 
 from .. import LOGGER
 from ..core.tg_client import TgClient
+=======
+
+from .. import LOGGER
+from ..core.telegram_manager import TgClient
+>>>>>>> dc9f6270dd208eb8a6a5a49f09fd36dc91a1f363
 from ..helper.ext_utils.bot_utils import sync_to_async, new_task
 from ..helper.telegram_helper.message_utils import send_file, send_message
 
@@ -17,8 +27,11 @@ namespaces = {}
 def namespace_of(message):
     if message.chat.id not in namespaces:
         namespaces[message.chat.id] = {
+<<<<<<< HEAD
             "__name__": "__main__",
             "__file__": "<exec>",
+=======
+>>>>>>> dc9f6270dd208eb8a6a5a49f09fd36dc91a1f363
             "__builtins__": globals()["__builtins__"],
             "bot": TgClient.bot,
             "message": message,
@@ -31,7 +44,11 @@ def namespace_of(message):
 
 def log_input(message):
     LOGGER.info(
+<<<<<<< HEAD
         f"IN: {message.text} (user={(message.from_user or message.sender_chat).id}, chat={message.chat.id})"
+=======
+        f"IN: {message.text} (user={message.from_user.id if message.from_user else message.sender_chat.id}, chat={message.chat.id})"
+>>>>>>> dc9f6270dd208eb8a6a5a49f09fd36dc91a1f363
     )
 
 
@@ -42,11 +59,15 @@ async def send(msg, message):
             await send_file(message, out_file)
     else:
         LOGGER.info(f"OUT: '{msg}'")
+<<<<<<< HEAD
         if not msg or msg == "\n":
             msg = "MessageEmpty"
         elif not bool(match(r"<(spoiler|b|i|code|s|u|/a)>", msg)):
             msg = f"<code>{msg}</code>"
         await send_message(message, msg)
+=======
+        await send_message(message, f"<code>{msg}</code>")
+>>>>>>> dc9f6270dd208eb8a6a5a49f09fd36dc91a1f363
 
 
 @new_task
@@ -92,7 +113,11 @@ async def do(func, message):
             func_return = (
                 await sync_to_async(rfunc) if func == "exec" else await rfunc()
             )
+<<<<<<< HEAD
     except Exception:
+=======
+    except:
+>>>>>>> dc9f6270dd208eb8a6a5a49f09fd36dc91a1f363
         value = stdout.getvalue()
         return f"{value}{format_exc()}"
     else:
@@ -102,8 +127,15 @@ async def do(func, message):
             if value:
                 result = f"{value}"
             else:
+<<<<<<< HEAD
                 with suppress(Exception):
                     result = f"{repr(await sync_to_async(eval, body, env))}"
+=======
+                try:
+                    result = f"{repr(await sync_to_async(eval, body, env))}"
+                except:
+                    pass
+>>>>>>> dc9f6270dd208eb8a6a5a49f09fd36dc91a1f363
         else:
             result = f"{value}{func_return}"
         if result:

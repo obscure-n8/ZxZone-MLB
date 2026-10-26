@@ -35,6 +35,7 @@ class MirrorStatus:
     STATUS_SAMVID = "SamVid"
     STATUS_CONVERT = "Convert"
     STATUS_FFMPEG = "FFmpeg"
+<<<<<<< HEAD
     STATUS_YT = "YouTube"
     STATUS_METADATA = "Metadata"
 
@@ -58,6 +59,14 @@ class EngineStatus:
         self.STATUS_YT = "Youtube-Api"
         self.STATUS_METADATA = "Metadata"
         self.STATUS_UPHOSTER = "Uphoster"
+=======
+    STATUS_METADATA = "Metadata"
+    STATUS_VT_ENCODE = "VT Encode"
+    STATUS_VT_CONVERT = "VT Convert"
+    STATUS_VT_MULTIRES = "VT MultiRes"
+    STATUS_VT_MERGE = "VT Merge"
+    STATUS_VT_MUXAUDIO = "VT MuxAudio"
+>>>>>>> dc9f6270dd208eb8a6a5a49f09fd36dc91a1f363
 
 
 STATUSES = {
@@ -290,12 +299,16 @@ async def get_readable_message(sid, is_user, page_no=1, status="All", page_step=
     msg += "⌬ <b><u>Bot Stats</u></b>"
     buttons = ButtonMaker()
     if not is_user:
+<<<<<<< HEAD
         buttons.data_button(
             "📜 TStats",
             f"status {sid} ov",
             position="header",
             style=ButtonStyle.PRIMARY,
         )
+=======
+        buttons.data_button("☲", f"status {sid} ov", position="header")
+>>>>>>> dc9f6270dd208eb8a6a5a49f09fd36dc91a1f363
     if len(tasks) > STATUS_LIMIT:
         msg += f"<b>Page:</b> {page_no}/{pages} | <b>Tasks:</b> {tasks_no} | <b>Step:</b> {page_step}\n"
         buttons.data_button("<<", f"status {sid} pre", position="header")
