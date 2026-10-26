@@ -1,6 +1,7 @@
 from .... import LOGGER
 from ...ext_utils.status_utils import (
     get_readable_file_size,
+    EngineStatus,
     MirrorStatus,
     get_readable_time,
 )
@@ -12,7 +13,7 @@ class FFmpegStatus:
         self._obj = obj
         self._gid = gid
         self._cstatus = status
-        self.tool = "ffmpeg"
+        self.engine = EngineStatus().STATUS_FFMPEG
 
     def speed(self):
         return f"{get_readable_file_size(self._obj.speed_raw)}/s"
@@ -57,6 +58,6 @@ class FFmpegStatus:
         ):
             try:
                 self.listener.subproc.kill()
-            except:
+            except Exception:
                 pass
         await self.listener.on_upload_error(f"{self._cstatus} stopped by user!")

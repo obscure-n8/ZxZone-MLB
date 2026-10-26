@@ -1,5 +1,6 @@
 from ....helper.ext_utils.status_utils import (
     MirrorStatus,
+    EngineStatus,
     get_readable_file_size,
     get_readable_time,
 )
@@ -12,7 +13,7 @@ class GoogleDriveStatus:
         self._size = self.listener.size
         self._gid = gid
         self._status = status
-        self.tool = "gDriveApi"
+        self.engine = EngineStatus().STATUS_GDAPI
 
     def processed_bytes(self):
         return get_readable_file_size(self._obj.processed_bytes)
@@ -37,7 +38,7 @@ class GoogleDriveStatus:
     def progress_raw(self):
         try:
             return self._obj.processed_bytes / self._size * 100
-        except:
+        except ZeroDivisionError:
             return 0
 
     def progress(self):
@@ -50,7 +51,7 @@ class GoogleDriveStatus:
         try:
             seconds = (self._size - self._obj.processed_bytes) / self._obj.speed
             return get_readable_time(seconds)
-        except:
+        except Exception:
             return "-"
 
     def task(self):

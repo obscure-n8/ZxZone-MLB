@@ -1,28 +1,33 @@
-from httpx import AsyncClient
-from asyncio import wait_for, Event
+from asyncio import Event, wait_for
 from functools import partial
+from time import time
+
+from httpx import AsyncClient
+from aiofiles.os import path as aiopath
+from yt_dlp import YoutubeDL
 from pyrogram.filters import regex, user
 from pyrogram.handlers import CallbackQueryHandler
-from time import time
-from yt_dlp import YoutubeDL
 
-from .. import LOGGER, bot_loop, task_dict_lock, DOWNLOAD_DIR
+from .. import DOWNLOAD_DIR, LOGGER, bot_loop, task_dict_lock
 from ..core.config_manager import Config
 from ..helper.ext_utils.bot_utils import (
+    COMMAND_USAGE,
+    arg_parser,
     new_task,
     sync_to_async,
-    arg_parser,
-    COMMAND_USAGE,
 )
 from ..helper.ext_utils.links_utils import is_url
+from ..helper.ext_utils.task_manager import pre_task_check
 from ..helper.ext_utils.status_utils import get_readable_file_size, get_readable_time
 from ..helper.listeners.task_listener import TaskListener
 from ..helper.mirror_leech_utils.download_utils.yt_dlp_download import YoutubeDLHelper
 from ..helper.telegram_helper.button_build import ButtonMaker
 from ..helper.telegram_helper.message_utils import (
-    send_message,
-    edit_message,
+    auto_delete_message,
+    delete_links,
     delete_message,
+    edit_message,
+    send_message,
 )
 
 
@@ -84,7 +89,7 @@ class YtSelection:
         )
         try:
             await wait_for(self.event.wait(), timeout=self._timeout)
-        except:
+        except Exception:
             await edit_message(self._reply_to, "Timed Out. Task has been cancelled!")
             self.qual = None
             self.listener.is_cancelled = True
@@ -226,7 +231,7 @@ class YtSelection:
         buttons.data_button("Back", "ytq aq back")
         buttons.data_button("Cancel", "ytq aq cancel")
         subbuttons = buttons.build_menu(5)
-        msg = f"Choose Audio{i} Quality:\n0 is best and 10 is worst\nTimeout: {get_readable_time(self._timeout - (time() - self._time))}"
+        msg = f"Choose Audio{i} Qaulity:\n0 is best and 10 is worst\nTimeout: {get_readable_time(self._timeout - (time() - self._time))}"
         await edit_message(self._reply_to, msg, subbuttons)
 
 
@@ -257,14 +262,12 @@ class YtDlp(TaskListener):
         self,
         client,
         message,
-        _=None,
         is_leech=False,
-        __=None,
-        ___=None,
         same_dir=None,
         bulk=None,
         multi_tag=None,
         options="",
+        **kwargs,
     ):
         if same_dir is None:
             same_dir = {}
@@ -285,6 +288,14 @@ class YtDlp(TaskListener):
         input_list = text[0].split(" ")
         qual = ""
 
+        check_msg, check_button = await pre_task_check(self.message)
+        if check_msg:
+            await delete_links(self.message)
+            await auto_delete_message(
+                await send_message(self.message, check_msg, check_button)
+            )
+            return
+
         args = {
             "-doc": False,
             "-med": False,
@@ -303,6 +314,7 @@ class YtDlp(TaskListener):
             "-sp": 0,
             "link": "",
             "-m": "",
+            "-meta": "",
             "-opt": {},
             "-n": "",
             "-up": "",
@@ -317,10 +329,24 @@ class YtDlp(TaskListener):
 
         arg_parser(input_list[1:], args)
 
+        if Config.DISABLE_FF_MODE and args.get("-ff"):
+            await send_message(self.message, "FFmpeg commands are currently disabled.")
+            return
+
         try:
             self.multi = int(args["-i"])
-        except:
+        except Exception:
             self.multi = 0
+
+        try:
+            if args["-ff"]:
+                if isinstance(args["-ff"], set):
+                    self.ffmpeg_cmds = args["-ff"]
+                else:
+                    self.ffmpeg_cmds = eval(args["-ff"])
+        except Exception as e:
+            self.ffmpeg_cmds = None
+            LOGGER.error(e)
 
         try:
             opt = eval(args["-opt"]) if args["-opt"] else {}
@@ -328,7 +354,6 @@ class YtDlp(TaskListener):
             LOGGER.error(e)
             opt = {}
 
-        self.ffmpeg_cmds = args["-ff"]
         self.select = args["-s"]
         self.name = args["-n"]
         self.up_dest = args["-up"]
@@ -344,7 +369,7 @@ class YtDlp(TaskListener):
         self.force_upload = args["-fu"]
         self.convert_audio = args["-ca"]
         self.convert_video = args["-cv"]
-        self.name_sub = args["-ns"]
+        self.name_swap = args["-ns"]
         self.hybrid_leech = args["-hl"]
         self.thumbnail_layout = args["-tl"]
         self.as_doc = args["-doc"]
@@ -352,6 +377,14 @@ class YtDlp(TaskListener):
         self.folder_name = f"/{args["-m"]}".rstrip("/") if len(args["-m"]) > 0 else ""
         self.bot_trans = args["-bt"]
         self.user_trans = args["-ut"]
+        self.metadata_dict = self.default_metadata_dict.copy()
+        self.audio_metadata_dict = self.audio_metadata_dict.copy()
+        self.video_metadata_dict = self.video_metadata_dict.copy()
+        self.subtitle_metadata_dict = self.subtitle_metadata_dict.copy()
+        if meta := args["-meta"]:
+            self.metadata_dict = self.metadata_processor.merge_dicts(
+                self.default_metadata_dict, self.metadata_processor.parse_string(meta)
+            )
 
         is_bulk = args["-b"]
 
@@ -415,6 +448,7 @@ class YtDlp(TaskListener):
                 self.message, COMMAND_USAGE["yt"][0], COMMAND_USAGE["yt"][1]
             )
             await self.remove_from_same_dir()
+            await delete_links(self.message)
             return
 
         if "mdisk.me" in self.link:
@@ -425,8 +459,23 @@ class YtDlp(TaskListener):
         except Exception as e:
             await send_message(self.message, e)
             await self.remove_from_same_dir()
+            await delete_links(self.message)
             return
-        options = {"usenetrc": True, "cookiefile": "cookies.txt"}
+
+        self._set_mode_engine()
+
+        cookie_to_use = (
+            usr_cookie
+            if not self.user_dict.get("USE_DEFAULT_COOKIE", False)
+            and (usr_cookie := self.user_dict.get("USER_COOKIE_FILE", ""))
+            and await aiopath.exists(usr_cookie)
+            else "cookies.txt"
+        )
+        LOGGER.info(
+            f"Using cookies.txt file: {cookie_to_use} | User ID : {self.user_id}"
+        )
+
+        options = {"usenetrc": True, "cookiefile": cookie_to_use}
         if opt:
             for key, value in opt.items():
                 if key in ["postprocessors", "download_ranges"]:
@@ -445,6 +494,7 @@ class YtDlp(TaskListener):
             msg = str(e).replace("<", " ").replace(">", " ")
             await send_message(self.message, f"{self.tag} {msg}")
             await self.remove_from_same_dir()
+            await delete_links(self.message)
             return
         finally:
             await self.run_multi(input_list, YtDlp)
@@ -457,7 +507,9 @@ class YtDlp(TaskListener):
 
         LOGGER.info(f"Downloading with YT-DLP: {self.link}")
         playlist = "entries" in result
+
         ydl = YoutubeDLHelper(self)
+        await delete_links(self.message)
         await ydl.add_download(path, qual, playlist, opt)
 
 

@@ -1,5 +1,6 @@
 from ...ext_utils.status_utils import (
     MirrorStatus,
+    EngineStatus,
     get_readable_file_size,
     get_readable_time,
 )
@@ -10,7 +11,7 @@ class YtDlpStatus:
         self._obj = obj
         self._gid = gid
         self.listener = listener
-        self.tool = "yt-dlp"
+        self.engine = EngineStatus().STATUS_YTDLP
 
     def gid(self):
         return self._gid
@@ -41,7 +42,7 @@ class YtDlpStatus:
                 self._obj.size - self._obj.downloaded_bytes
             ) / self._obj.download_speed
             return get_readable_time(seconds)
-        except:
+        except Exception:
             return "-"
 
     def task(self):

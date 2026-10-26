@@ -1,24 +1,25 @@
-from httpx import AsyncClient
-from asyncio.subprocess import PIPE
-from functools import partial, wraps
-from concurrent.futures import ThreadPoolExecutor
 from asyncio import (
     create_subprocess_exec,
     create_subprocess_shell,
     run_coroutine_threadsafe,
     sleep,
 )
+from pyrogram.enums import ButtonStyle
+from asyncio.subprocess import PIPE
+from concurrent.futures import ThreadPoolExecutor
+from functools import partial, wraps
 
-from ... import user_data, bot_loop
+from httpx import AsyncClient
+
+from ... import bot_loop, user_data
 from ...core.config_manager import Config
 from ..telegram_helper.button_build import ButtonMaker
-from .telegraph_helper import telegraph
 from .help_messages import (
-    YT_HELP_DICT,
-    GDL_HELP_DICT,
-    MIRROR_HELP_DICT,
     CLONE_HELP_DICT,
+    MIRROR_HELP_DICT,
+    YT_HELP_DICT,
 )
+from .telegraph_helper import telegraph
 
 COMMAND_USAGE = {}
 
@@ -42,18 +43,42 @@ class SetInterval:
 
 def _build_command_usage(help_dict, command_key):
     buttons = ButtonMaker()
-    for name in list(help_dict.keys())[1:]:
-        buttons.data_button(name, f"help {command_key} {name}")
-    buttons.data_button("Close", "help close")
-    COMMAND_USAGE[command_key] = [help_dict["main"], buttons.build_menu(3)]
-    buttons.reset()
+    cmd_list = list(help_dict.keys())[1:]
+    cmd_pages = [cmd_list[i : i + 10] for i in range(0, len(cmd_list), 10)]
+    temp_store = []
+
+    for i, page in enumerate(cmd_pages):
+        for name in page:
+            buttons.data_button(name, f"help {command_key} {name} {i}")
+        if len(cmd_pages) > 1:
+            if i > 0:
+                buttons.data_button("⫷", f"help pre {command_key} {i - 1}")
+            if i < len(cmd_pages) - 1:
+                buttons.data_button("⫸", f"help nex {command_key} {i + 1}")
+        buttons.data_button("Close", "help close", "footer", style=ButtonStyle.DANGER)
+        temp_store.append(buttons.build_menu(2))
+        buttons.reset()
+
+    COMMAND_USAGE[command_key] = [help_dict["main"], *temp_store]
 
 
 def create_help_buttons():
     _build_command_usage(MIRROR_HELP_DICT, "mirror")
     _build_command_usage(YT_HELP_DICT, "yt")
-    _build_command_usage(GDL_HELP_DICT, "gdl")
     _build_command_usage(CLONE_HELP_DICT, "clone")
+
+
+def compare_versions(v1, v2):
+    v1, v2 = (list(map(int, v.split("-")[0].lstrip("v").split("."))) for v in (v1, v2))
+    return (
+        "New Version Update is Available! Check Now!"
+        if v1 < v2
+        else (
+            "More Updated! Kindly Contribute in Official"
+            if v1 > v2
+            else "Already up to date with latest version"
+        )
+    )
 
 
 def bt_selection_buttons(id_):
@@ -61,14 +86,22 @@ def bt_selection_buttons(id_):
     pin = "".join([n for n in id_ if n.isdigit()][:4])
     buttons = ButtonMaker()
     if Config.WEB_PINCODE:
-        buttons.url_button("Select Files", f"{Config.BASE_URL}/app/files?gid={id_}")
+        buttons.url_button(
+            "Select Files",
+            f"{Config.BASE_URL}/app/files?gid={id_}",
+            style=ButtonStyle.PRIMARY,
+        )
         buttons.data_button("Pincode", f"sel pin {gid} {pin}")
     else:
         buttons.url_button(
-            "Select Files", f"{Config.BASE_URL}/app/files?gid={id_}&pin={pin}"
+            "Select Files",
+            f"{Config.BASE_URL}/app/files?gid={id_}&pin={pin}",
+            style=ButtonStyle.PRIMARY,
         )
-    buttons.data_button("Done Selecting", f"sel done {gid} {id_}")
-    buttons.data_button("Close", "sel close")
+    buttons.data_button(
+        "Done Selecting", f"sel done {gid} {id_}", style=ButtonStyle.SUCCESS
+    )
+    buttons.data_button("Cancel", f"sel cancel {gid}", style=ButtonStyle.DANGER)
     return buttons.build_menu(2)
 
 
@@ -89,7 +122,6 @@ async def get_telegraph_list(telegraph_content):
 
 
 def arg_parser(items, arg_base):
-
     if not items:
         return
 
@@ -115,9 +147,16 @@ def arg_parser(items, arg_base):
         "-med",
         "-ut",
         "-bt",
-        "-ad",
-        "-tb",
+        "-yt",
     }
+    if Config.DISABLE_BULK and "-b" in items:
+        arg_base["-b"] = False
+
+    if Config.DISABLE_MULTI and "-i" in items:
+        arg_base["-i"] = 0
+
+    if Config.DISABLE_SEED and "-d" in items:
+        arg_base["-d"] = False
 
     while i < total:
         part = items[i]
@@ -142,8 +181,7 @@ def arg_parser(items, arg_base):
                     "-med",
                     "-ut",
                     "-bt",
-                    "-ad",
-                    "-tb",
+                    "-yt",
                 ]
             ):
                 arg_base[part] = True
@@ -160,8 +198,6 @@ def arg_parser(items, arg_base):
                         if not sub_list:
                             break
                         check = " ".join(sub_list).strip()
-                        if part != "-ff":
-                            break
                         if check.startswith("[") and check.endswith("]"):
                             break
                         elif not check.startswith("["):
@@ -169,18 +205,14 @@ def arg_parser(items, arg_base):
                     sub_list.append(items[j])
                 if sub_list:
                     value = " ".join(sub_list)
-                    if part == "-ff":
-                        if not value.strip().startswith("["):
-                            arg_base[part].add(value)
-                        else:
-                            try:
-                                arg_base[part].add(tuple(eval(value)))
-                            except:
-                                pass
+                    if part == "-ff" and not value.strip().startswith("["):
+                        arg_base[part].add(value)
                     else:
                         arg_base[part] = value
                     i += len(sub_list)
+
         i += 1
+
     if "link" in arg_base:
         link_items = items[:arg_start] if arg_start != -1 else items
         if link_items:
@@ -207,7 +239,7 @@ async def get_content_type(url):
         async with AsyncClient() as client:
             response = await client.get(url, allow_redirects=True, verify=False)
             return response.headers.get("Content-Type")
-    except:
+    except Exception:
         return None
 
 
@@ -224,11 +256,11 @@ async def cmd_exec(cmd, shell=False):
     stdout, stderr = await proc.communicate()
     try:
         stdout = stdout.decode().strip()
-    except:
+    except Exception:
         stdout = "Unable to decode the response!"
     try:
         stderr = stderr.decode().strip()
-    except:
+    except Exception:
         stderr = "Unable to decode the error!"
     return stdout, stderr, proc.returncode
 
@@ -260,3 +292,10 @@ def loop_thread(func):
         return future.result() if wait else future
 
     return wrapper
+
+
+def safe_int(value, default=0):
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return default

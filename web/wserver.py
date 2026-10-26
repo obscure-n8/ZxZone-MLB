@@ -1,19 +1,29 @@
+# ruff: noqa: E402
 from uvloop import install
 
 install()
+
+from asyncio import new_event_loop, set_event_loop
+
+bot_loop = new_event_loop()
+set_event_loop(bot_loop)
+
+from asyncio import sleep
+from urllib.parse import urlparse
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request
+from logging import INFO, WARNING, FileHandler, StreamHandler, basicConfig, getLogger
+
+from aioaria2 import Aria2HttpClient
+from aiohttp.client_exceptions import ClientError
+from aioqbt.client import create_client
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
-from logging import getLogger, FileHandler, StreamHandler, INFO, basicConfig, WARNING
-from asyncio import sleep
 from sabnzbdapi import SabnzbdClient
-from aioaria2 import Aria2HttpClient
-from aioqbt.client import create_client
-from aiohttp.client_exceptions import ClientError
 from aioqbt.exc import AQError
 
 from web.nodes import extract_file_ids, make_tree
+from aiohttp import ClientSession
 
 getLogger("httpx").setLevel(WARNING)
 getLogger("aiohttp").setLevel(WARNING)
@@ -22,9 +32,13 @@ aria2 = None
 qbittorrent = None
 sabnzbd_client = SabnzbdClient(
     host="http://localhost",
-    api_key="mltb",
+    api_key="admin",
     port="8070",
 )
+SERVICES = {
+    "nzb": {"url": "http://localhost:8070/"},
+    "qbit": {"url": "http://localhost:8090", "password": "wzmlx"},
+}
 
 
 @asynccontextmanager
@@ -43,7 +57,8 @@ app = FastAPI(lifespan=lifespan)
 templates = Jinja2Templates(directory="web/templates/")
 
 basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    format="[%(asctime)s] [%(levelname)s] - %(message)s",  #  [%(filename)s:%(lineno)d]
+    datefmt="%d-%b-%y %I:%M:%S %p",
     handlers=[FileHandler("log.txt"), StreamHandler()],
     level=INFO,
 )
@@ -242,12 +257,85 @@ async def set_aria2(gid, selected_files):
 
 
 @app.get("/", response_class=HTMLResponse)
-async def homepage():
-    return (
-        "<h1>See mirror-leech-telegram-bot "
-        "<a href='https://www.github.com/anasty17/mirror-leech-telegram-bot'>@GitHub</a> "
-        "By <a href='https://github.com/anasty17'>Anas</a></h1>"
+async def homepage(request: Request):
+    return templates.TemplateResponse(request, "landing.html")
+
+
+def rewrite_location(location: str, proxy_prefix: str) -> str:
+    parsed = urlparse(location)
+    if not parsed.netloc:
+        return proxy_prefix + location
+    if parsed.hostname in ["localhost", "127.0.0.1"]:
+        return proxy_prefix + parsed.path
+    return location
+
+
+async def proxy_fetch(
+    method: str, url: str, headers: dict, params: dict, body: bytes, proxy_prefix: str
+):
+    async with ClientSession(auto_decompress=True) as session:
+        async with session.request(
+            method,
+            url,
+            headers=headers,
+            params=params,
+            data=body,
+            allow_redirects=False,
+        ) as upstream:
+            if upstream.status in (301, 302, 303, 307, 308) and upstream.headers.get(
+                "Location"
+            ):
+                loc = upstream.headers["Location"]
+                new_loc = rewrite_location(loc, proxy_prefix)
+                return HTMLResponse(
+                    status_code=upstream.status, headers={"Location": new_loc}
+                )
+            content = await upstream.read()
+            media_type = upstream.headers.get("Content-Type", "text/html")
+            resp_headers = {
+                k: v
+                for k, v in upstream.headers.items()
+                if k.lower() not in ["content-length", "content-encoding"]
+            }
+            return HTMLResponse(
+                content=content,
+                status_code=upstream.status,
+                headers=resp_headers,
+                media_type=media_type,
+            )
+
+
+async def protected_proxy(
+    service: str, path: str, request: Request, password: str = None
+):
+    service_info = SERVICES.get(service)
+    if not service_info:
+        raise HTTPException(status_code=404, detail="Service not found")
+    if "password" in service_info and password != service_info["password"]:
+        raise HTTPException(status_code=403, detail="Unauthorized access")
+    base = service_info["url"]
+    url = f"{base}/{path}" if path else base
+    headers = {k: v for k, v in request.headers.items() if k.lower() != "host"}
+    body = await request.body()
+    return await proxy_fetch(
+        request.method, url, headers, dict(request.query_params), body, f"/{service}"
     )
+
+
+@app.api_route("/nzb/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
+async def sabnzbd_proxy(path: str = "", request: Request = None):
+    return await protected_proxy("nzb", path, request)
+
+
+@app.api_route("/qbit/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
+async def qbittorrent_proxy(path: str = "", request: Request = None):
+    password = request.query_params.get("pass") or request.cookies.get("qbit_pass")
+    if not password:
+        raise HTTPException(status_code=403, detail="Missing password")
+    response = await protected_proxy("qbit", path, request, password)
+    if "pass" in request.query_params:
+        response.set_cookie("qbit_pass", password)
+    return response
 
 
 @app.exception_handler(Exception)

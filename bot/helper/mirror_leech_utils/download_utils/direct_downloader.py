@@ -1,11 +1,15 @@
-from secrets import token_urlsafe
+from secrets import token_hex
 
 from .... import (
     LOGGER,
     task_dict,
     task_dict_lock,
 )
-from ...ext_utils.task_manager import check_running_tasks, stop_duplicate_check
+from ...ext_utils.task_manager import (
+    check_running_tasks,
+    stop_duplicate_check,
+    limit_checker,
+)
 from ...listeners.direct_listener import DirectListener
 from ...mirror_leech_utils.status_utils.direct_status import DirectStatus
 from ...mirror_leech_utils.status_utils.queue_status import QueueStatus
@@ -28,7 +32,11 @@ async def add_direct_download(listener, path):
         await listener.on_download_error(msg, button)
         return
 
-    gid = token_urlsafe(10)
+    if limit_exceeded := await limit_checker(listener):
+        await listener.on_download_error(limit_exceeded, is_limit=True)
+        return
+
+    gid = token_hex(5)
     add_to_queue, event = await check_running_tasks(listener)
     if add_to_queue:
         LOGGER.info(f"Added to Queue/Download: {listener.name}")

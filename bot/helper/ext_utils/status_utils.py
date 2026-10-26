@@ -1,11 +1,19 @@
+from asyncio import gather, iscoroutinefunction
 from html import escape
-from psutil import virtual_memory, cpu_percent, disk_usage
+from pyrogram.enums import ButtonStyle
+from re import findall
 from time import time
-from asyncio import gather
-from inspect import iscoroutinefunction
-from pyrogram.types import InputRichMessage
 
-from ... import task_dict, task_dict_lock, bot_start_time, status_dict, DOWNLOAD_DIR
+from psutil import cpu_percent, disk_usage, virtual_memory
+
+from ... import (
+    DOWNLOAD_DIR,
+    bot_cache,
+    bot_start_time,
+    status_dict,
+    task_dict,
+    task_dict_lock,
+)
 from ...core.config_manager import Config
 from ..telegram_helper.button_build import ButtonMaker
 
@@ -27,6 +35,29 @@ class MirrorStatus:
     STATUS_SAMVID = "SamVid"
     STATUS_CONVERT = "Convert"
     STATUS_FFMPEG = "FFmpeg"
+    STATUS_YT = "YouTube"
+    STATUS_METADATA = "Metadata"
+
+
+class EngineStatus:
+    def __init__(self):
+        ver = bot_cache.get("eng_versions", {})
+        self.STATUS_ARIA2 = f"Aria2 v{ver.get('aria2', 'N/A')}"
+        self.STATUS_AIOHTTP = f"AioHttp v{ver.get('aiohttp', 'N/A')}"
+        self.STATUS_GDAPI = f"Google-API v{ver.get('gapi', 'N/A')}"
+        self.STATUS_QBIT = f"qBit v{ver.get('qBittorrent', 'N/A')}"
+        self.STATUS_TGRAM = f"Pyro v{ver.get('pyrotgfork', 'N/A')}"
+        self.STATUS_MEGA = f"MegaCMD v{ver.get('mega', 'N/A')}"
+        self.STATUS_YTDLP = f"yt-dlp v{ver.get('yt-dlp', 'N/A')}"
+        self.STATUS_FFMPEG = f"ffmpeg v{ver.get('ffmpeg', 'N/A')}"
+        self.STATUS_7Z = f"7z v{ver.get('7z', 'N/A')}"
+        self.STATUS_RCLONE = f"RClone v{ver.get('rclone', 'N/A')}"
+        self.STATUS_SABNZBD = f"SABnzbd+ v{ver.get('SABnzbd+', 'N/A')}"
+        self.STATUS_QUEUE = "QSystem v2"
+        self.STATUS_JD = "JDownloader v2"
+        self.STATUS_YT = "Youtube-Api"
+        self.STATUS_METADATA = "Metadata"
+        self.STATUS_UPHOSTER = "Uphoster"
 
 
 STATUSES = {
@@ -53,7 +84,7 @@ async def get_task_by_gid(gid: str):
         for tk in task_dict.values():
             if hasattr(tk, "seeding"):
                 await tk.update()
-            if tk.gid() == gid:
+            if tk.gid() == gid or tk.gid().startswith(gid):
                 return tk
         return None
 
@@ -92,6 +123,11 @@ async def get_all_tasks(req_status: str, user_id):
         return await get_specific_tasks(req_status, user_id)
 
 
+def get_raw_file_size(size):
+    num, unit = size.split()
+    return int(float(num) * (1024 ** SIZE_UNITS.index(unit)))
+
+
 def get_readable_file_size(size_in_bytes):
     if not size_in_bytes:
         return "0B"
@@ -114,6 +150,14 @@ def get_readable_time(seconds: int):
     return result
 
 
+def get_raw_time(time_str: str) -> int:
+    time_units = {"d": 86400, "h": 3600, "m": 60, "s": 1}
+    return sum(
+        int(value) * time_units[unit]
+        for value, unit in findall(r"(\d+)([dhms])", time_str)
+    )
+
+
 def time_to_seconds(time_duration):
     try:
         parts = time_duration.split(":")
@@ -129,7 +173,7 @@ def time_to_seconds(time_duration):
         else:
             return 0
         return hours * 3600 + minutes * 60 + seconds
-    except:
+    except Exception:
         return 0
 
 
@@ -150,11 +194,11 @@ def speed_string_to_bytes(size_text: str):
 
 
 def get_progress_bar_string(pct):
-    pct = float(pct.strip("%"))
+    pct = float(str(pct).strip("%"))
     p = min(max(pct, 0), 100)
     cFull = int(p // 8)
-    p_str = "■" * cFull
-    p_str += "□" * (12 - cFull)
+    p_str = "⬢" * cFull
+    p_str += "⬡" * (12 - cFull)
     return f"[{p_str}]"
 
 
@@ -184,87 +228,76 @@ async def get_readable_message(sid, is_user, page_no=1, status="All", page_step=
             tstatus = await task.status()
         else:
             tstatus = task.status()
-        if task.listener.is_super_chat:
-            msg += f"<b>{index + start_position}.<a href='{task.listener.message.link}'>{tstatus}</a>: </b>"
-        else:
-            msg += f"<b>{index + start_position}.{tstatus}: </b>"
-        msg += f"<code>{escape(f'{task.name()}')}</code>"
+        msg += f"<b>{index + start_position}.</b> "
+        msg += f"<b><i>{escape(f'{task.name()}')}</i></b>"
         if task.listener.subname:
-            msg += f"<br><i>{task.listener.subname}</i>"
+            msg += f"\n┖ <b>Sub Name</b> → <i>{task.listener.subname}</i>"
+        elapsed = time() - task.listener.message.date.timestamp()
+
+        msg += f"\n\n<b>Task By {task.listener.message.from_user.mention(style='html')} </b> ( #ID{task.listener.message.from_user.id} )"
+        if task.listener.is_super_chat:
+            msg += f" <i>[<a href='{task.listener.message.link}'>Link</a>]</i>"
+
         if (
             tstatus not in [MirrorStatus.STATUS_SEED, MirrorStatus.STATUS_QUEUEUP]
             and task.listener.progress
         ):
             progress = task.progress()
-            msg += f"<br>{get_progress_bar_string(progress)} {progress}"
+            msg += f"\n┟ {get_progress_bar_string(progress)} <i>{progress}</i>"
             if task.listener.subname:
-                subsize = f"/{get_readable_file_size(task.listener.subsize)}"
+                subsize = f" / {get_readable_file_size(task.listener.subsize)}"
                 ac = len(task.listener.files_to_proceed)
-                count = f"{task.listener.proceed_count}/{ac or '?'}"
+                count = f"( {task.listener.proceed_count} / {ac or '?'} )"
             else:
                 subsize = ""
                 count = ""
-            msg += f"<br><b>Processed:</b> {task.processed_bytes()}{subsize}"
+            msg += f"\n┠ <b>Processed</b> → <i>{task.processed_bytes()}{subsize} of {task.size()}</i>"
             if count:
-                msg += f"<br><b>Count:</b> {count}"
-            msg += f"<br><b>Size:</b> {task.size()}"
-            msg += f"<br><b>Speed:</b> {task.speed()}"
-            msg += f"<br><b>ETA:</b> {task.eta()}"
-            if (
-                tstatus == MirrorStatus.STATUS_DOWNLOAD
-                and task.listener.is_torrent
-                or task.listener.is_qbit
+                msg += f"\n┠ <b>Count:</b> → <b>{count}</b>"
+            msg += f"\n┠ <b>Status</b> → <b>{tstatus}</b>"
+            msg += f"\n┠ <b>Speed</b> → <i>{task.speed()}</i>"
+            msg += f"\n┠ <b>Time</b> → <i>{task.eta()} of {get_readable_time(elapsed + get_raw_time(task.eta()))} ( {get_readable_time(elapsed)} )</i>"
+            if tstatus == MirrorStatus.STATUS_DOWNLOAD and (
+                task.listener.is_torrent or task.listener.is_qbit
             ):
                 try:
-                    msg += f"<br><b>Seeders:</b> {task.seeders_num()} | <b>Leechers:</b> {task.leechers_num()}"
-                except:
+                    msg += f"\n┠ <b>Seeders</b> → {task.seeders_num()} | <b>Leechers</b> → {task.leechers_num()}"
+                except Exception:
                     pass
+            # TODO: Add Connected Peers
         elif tstatus == MirrorStatus.STATUS_SEED:
-            msg += f"<br><b>Size: </b>{task.size()}"
-            msg += f"<br><b>Speed: </b>{task.seed_speed()}"
-            msg += f"<br><b>Uploaded: </b>{task.uploaded_bytes()}"
-            msg += f"<br><b>Ratio: </b>{task.ratio()}"
-            msg += f" | <b>Time: </b>{task.seeding_time()}"
+            msg += f"\n┠ <b>Size</b> → <i>{task.size()}</i> | <b>Uploaded</b>  → <i>{task.uploaded_bytes()}</i>"
+            msg += f"\n┠ <b>Status</b> → <b>{tstatus}</b>"
+            msg += f"\n┠ <b>Speed</b> → <i>{task.seed_speed()}</i>"
+            msg += f"\n┠ <b>Ratio</b> → <i>{task.ratio()}</i>"
+            msg += f"\n┠ <b>Time</b> → <i>{task.seeding_time()}</i> | <b>Elapsed</b> → <i>{get_readable_time(elapsed)}</i>"
         else:
-            msg += f"<br><b>Size: </b>{task.size()}"
-        msg += f"<br><b>Fn: </b><tg-button type='callback_data' data='cancel canconf {task.gid()}' style='danger'>Cancel</tg-button>"
-        if (
-            task.tool == "aria2"
-            and task.listener.is_torrent
-            or task.tool
-            in [
-                "qbittorrent",
-                "sabnzbd",
-            ]
-        ) and tstatus in [
-            MirrorStatus.STATUS_DOWNLOAD,
-            MirrorStatus.STATUS_PAUSED,
-            MirrorStatus.STATUS_QUEUEDL,
-        ]:
-            msg += f" | <tg-button type='callback_data' data='sel select {task.gid()}' style='primary'>Select</tg-button>"
-        if tstatus != MirrorStatus.STATUS_UPLOAD and (
-            Config.QUEUE_ALL or Config.QUEUE_DOWNLOAD or Config.QUEUE_UPLOAD
-        ):
-            if tstatus == MirrorStatus.STATUS_QUEUEDL:
-                msg += f" | <tg-button type='callback_data' data='force run {task.gid()}' style='success'>ForceRun</tg-button>"
-                msg += f" | <tg-button type='callback_data' data='force fd {task.gid()}' style='success'>ForceDl</tg-button>"
-                if not task.listener.force_upload:
-                    msg += f" | <tg-button type='callback_data' data='force fu {task.gid()}' style='success'>ForceUp</tg-button>"
-            elif not task.listener.force_upload and (
-                tstatus == MirrorStatus.STATUS_DOWNLOAD or not task.listener.force_run
-            ):
-                msg += f" | <tg-button type='callback_data' data='force fu {task.gid()}' style='success'>ForceUp</tg-button>"
-        msg += "<br><br>"
+            msg += f"\n┠ <b>Size</b> → <i>{task.size()}</i>"
+        msg += f"\n┠ <b>Engine</b> → <i>{task.engine}</i>"
+        msg += f"\n┠ <b>In Mode</b> → <i>{task.listener.mode[0]}</i>"
+        msg += f"\n┠ <b>Out Mode</b> → <i>{task.listener.mode[1]}</i>"
+        # TODO: Add Bt Sel
+        from ..telegram_helper.bot_commands import BotCommands
+
+        msg += f"\n<b>┖ Stop</b> → <i>/{BotCommands.CancelTaskCommand[1]}_{task.gid()[:8]}</i>\n\n"
+
     if len(msg) == 0:
         if status == "All":
             return None, None
         else:
-            msg = f"No Active {status} Tasks!<br><br>"
+            msg = f"No Active {status} Tasks!\n\n"
+
+    msg += "⌬ <b><u>Bot Stats</u></b>"
     buttons = ButtonMaker()
     if not is_user:
-        buttons.data_button("📜", f"status {sid} ov", position="header")
+        buttons.data_button(
+            "📜 TStats",
+            f"status {sid} ov",
+            position="header",
+            style=ButtonStyle.PRIMARY,
+        )
     if len(tasks) > STATUS_LIMIT:
-        msg += f"<b>Page:</b> {page_no}/{pages} | <b>Tasks:</b> {tasks_no} | <b>Step:</b> {page_step}<br>"
+        msg += f"<b>Page:</b> {page_no}/{pages} | <b>Tasks:</b> {tasks_no} | <b>Step:</b> {page_step}\n"
         buttons.data_button("<<", f"status {sid} pre", position="header")
         buttons.data_button(">>", f"status {sid} nex", position="header")
         if tasks_no > 30:
@@ -274,8 +307,10 @@ async def get_readable_message(sid, is_user, page_no=1, status="All", page_step=
         for label, status_value in list(STATUSES.items()):
             if status_value != status:
                 buttons.data_button(label, f"status {sid} st {status_value}")
-    buttons.data_button("♻️", f"status {sid} ref", position="header", style="green")
+    buttons.data_button(
+        "♻️ Refresh", f"status {sid} ref", position="header", style=ButtonStyle.PRIMARY
+    )
     button = buttons.build_menu(8)
-    msg += f"<b>CPU:</b> {cpu_percent()}% | <b>FREE:</b> {get_readable_file_size(disk_usage(DOWNLOAD_DIR).free)}"
-    msg += f"<br><b>RAM:</b> {virtual_memory().percent}% | <b>UPTIME:</b> {get_readable_time(time() - bot_start_time)}"
-    return InputRichMessage(html=msg), button
+    msg += f"\n┟ <b>CPU</b> → {cpu_percent()}% | <b>F</b> → {get_readable_file_size(disk_usage(DOWNLOAD_DIR).free)} [{round(100 - disk_usage(DOWNLOAD_DIR).percent, 1)}%]"
+    msg += f"\n┖ <b>RAM</b> → {virtual_memory().percent}% | <b>UP</b> → {get_readable_time(time() - bot_start_time)}"
+    return msg, button

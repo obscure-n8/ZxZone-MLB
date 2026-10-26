@@ -4,6 +4,7 @@ from .... import LOGGER, qb_torrents, qb_listener_lock
 from ....core.torrent_manager import TorrentManager
 from ...ext_utils.status_utils import (
     MirrorStatus,
+    EngineStatus,
     get_readable_file_size,
     get_readable_time,
 )
@@ -24,7 +25,7 @@ class QbittorrentStatus:
         self.seeding = seeding
         self.listener = listener
         self._info = None
-        self.tool = "qbittorrent"
+        self.engine = EngineStatus().STATUS_QBIT
 
     async def update(self):
         self._info = await get_download(f"{self.listener.mid}", self._info)

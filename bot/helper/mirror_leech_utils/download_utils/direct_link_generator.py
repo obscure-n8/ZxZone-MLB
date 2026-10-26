@@ -8,7 +8,7 @@ from re import findall, match, search
 from requests import Session, post, get
 from requests.adapters import HTTPAdapter
 from time import sleep, time
-from urllib.parse import parse_qs, urlparse, quote
+from urllib.parse import parse_qs, urlparse
 from urllib3.util.retry import Retry
 from uuid import uuid4
 from base64 import b64decode, b64encode
@@ -24,6 +24,122 @@ user_agent = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0) Gecko/20100101 Firefox/122.0"
 )
 
+debrid_link_supported_sites = [
+    "1fichier.com",
+    "anonfiles.com",
+    "bayfiles.com",
+    "clicknupload.link",
+    "clicknupload.org",
+    "clicknupload.co",
+    "clicknupload.cc",
+    "clicknupload.download",
+    "clicknupload.club",
+    "dailyuploads.net",
+    "ddl.to",
+    "ddownload.com",
+    "ddownload.link",
+    "drop.download",
+    "dropbox.com",
+    "dropboxusercontent.com",
+    "easyupload.io",
+    "emload.com",
+    "file.al",
+    "fileaxa.com",
+    "filecat.net",
+    "filedot.to",
+    "filedot.xyz",
+    "filextras.com",
+    "filer.net",
+    "filespace.com",
+    "filestore.me",
+    "gigapeta.com",
+    "gofile.io",
+    "hexupload.net",
+    "hitfile.net",
+    "hulkshare.com",
+    "isra.cloud",
+    "katfile.com",
+    "kshared.com",
+    "mediafire.com",
+    "mega.nz",
+    "mega.co.nz",
+    "mexashare.com",
+    "mixdrop.co",
+    "mixdrop.to",
+    "mixdrop.sx",
+    "mixdrop.club",
+    "modsbase.com",
+    "nelion.me",
+    "pixeldrain.com",
+    "prefiles.com",
+    "racaty.net",
+    "rapidgator.net",
+    "rapidgator.asia",
+    "rg.to",
+    "scribd.com",
+    "send.cm",
+    "sharemods.com",
+    "silkfiles.com",
+    "soundcloud.com",
+    "streamtape.com",
+    "terabox.com",
+    "teraboxapp.com",
+    "tezfiles.com",
+    "turb.cc",
+    "turb.to",
+    "turbobit.net",
+    "turbobit.cc",
+    "turbobit.pw",
+    "turbobit.online",
+    "turbobit.ru",
+    "turbobit.live",
+    "trubobit.com",
+    "turboblt.co",
+    "uloz.to",
+    "ulozto.net",
+    "ulozto.sk",
+    "ulozto.cz",
+    "upload.ee",
+    "uploadhaven.com",
+    "up-4ever.com",
+    "up-4ever.net",
+    "uptobox.com",
+    "uptobox.fr",
+    "uptobox.eu",
+    "uptobox.link",
+    "uptostream.com",
+    "uptostream.fr",
+    "uptostream.eu",
+    "uptostream.link",
+    "upvid.pro",
+    "upvid.live",
+    "upvid.host",
+    "upvid.biz",
+    "upvid.cloud",
+    "uqload.com",
+    "uqload.co",
+    "uqload.io",
+    "userload.co",
+    "usersdrive.com",
+    "vidoza.net",
+    "voe.sx",
+    "voe-unblock.com",
+    "voeunblock1.com",
+    "voeunblock2.com",
+    "voeunblock3.com",
+    "voeunbl0ck.com",
+    "voeunblck.com",
+    "voeunblk.com",
+    "voe-un-block.com",
+    "voeun-block.net",
+    "workupload.com",
+    "world-bytez.com",
+    "worldbytez.com",
+    "world-files.com",
+    "wupfile.com",
+    "zippyshare.com",
+]
+
 
 def direct_link_generator(link):
     """direct links generator"""
@@ -38,6 +154,10 @@ def direct_link_generator(link):
             if str(e).startswith("ERROR: No Direct link function found"):
                 return resolved
             raise
+    elif Config.DEBRID_LINK_API and any(
+        x in domain for x in debrid_link_supported_sites
+    ):
+        return debrid_link(link)
     elif "yadi.sk" in link or "disk.yandex." in link:
         return yandex_disk(link)
     elif "buzzheavier.com" in domain:
@@ -98,8 +218,8 @@ def direct_link_generator(link):
         return berkasdrive(link)
     elif "swisstransfer.com" in domain:
         return swisstransfer(link)
-    elif "mega.nz" in domain:
-        return mega(link)
+    elif "instagram.com" in domain:
+        return instagram(link)
     elif any(x in domain for x in ["akmfiles.com", "akmfls.xyz"]):
         return akmfiles(link)
     elif any(
@@ -243,55 +363,11 @@ def get_captcha_token(session, params):
 
 
 def transfer_it(url):
-    resp = post("https://transfer-it-thezake.vercel.app/api/post", json={"url": url})
+    resp = post("https://transfer-it-henna.vercel.app/post", json={"url": url})
     if resp.status_code == 200:
         return resp.json()["url"]
     else:
         raise DirectDownloadLinkException("ERROR: File Expired or File Not Found")
-
-
-def mega(url):
-    api = "https://megadl.the-zake.workers.dev/api/mega"
-    deadline = time() + 120
-    try:
-        data = get(api, params={"url": url}, timeout=40).json()
-        if "error" in data:
-            raise DirectDownloadLinkException(f"ERROR: {data.get('message') or data['error']}")
-    except DirectDownloadLinkException:
-        raise
-    except Exception as e:
-        raise DirectDownloadLinkException(f"ERROR: {e.__class__.__name__}: {e}")
-
-    job_id = data.get("job_id")
-    while data.get("state") not in ("completed", "partial", "failed", "expired"):
-        remaining = deadline - time()
-        if remaining <= 2:
-            break
-        sleep(2)
-        try:
-            data = get(f"{api}/status", params={"id": job_id}, timeout=min(20, remaining)).json()
-        except Exception:
-            break
-
-    if data.get("state") in ("failed", "expired"):
-        raise DirectDownloadLinkException(f"ERROR: Job {data.get('state')}")
-
-    files = [f for f in data.get("files", []) if f.get("download_url")]
-    if not files:
-        raise DirectDownloadLinkException("ERROR: No downloadable files found")
-
-    if len(files) == 1:
-        return files[0]["download_url"]
-
-    details = {"contents": [], "title": data.get("name") or "Mega", "total_size": 0}
-    for f in files:
-        details["total_size"] += f.get("size") or 0
-        details["contents"].append({
-            "url": f["download_url"],
-            "filename": f["name"],
-            "path": "",
-        })
-    return details
 
 
 def buzzheavier(url):
@@ -350,7 +426,7 @@ def buzzheavier(url):
                     details["contents"].append(item)
                     size = speed_string_to_bytes(size)
                     details["total_size"] += size
-                except:
+                except Exception:
                     continue
             details["title"] = tree.xpath("//span/text()")[0].strip()
             return details
@@ -1328,7 +1404,7 @@ def linkBox(url: str):
     parsed_url = urlparse(url)
     try:
         shareToken = parsed_url.path.split("/")[-1]
-    except:
+    except Exception:
         raise DirectDownloadLinkException("ERROR: invalid URL")
 
     details = {"contents": [], "title": "", "total_size": 0}
@@ -1388,7 +1464,7 @@ def linkBox(url: str):
         try:
             if data["shareType"] == "singleItem":
                 return __singleItem(session, data["itemId"])
-        except:
+        except Exception:
             pass
         if not details["title"]:
             details["title"] = data["dirName"]
@@ -1550,7 +1626,7 @@ def mediafireFolder(url):
         raw = url.split("/", 4)[-1]
         folderkey = raw.split("/", 1)[0]
         folderkey = folderkey.split(",")
-    except:
+    except Exception:
         raise DirectDownloadLinkException("ERROR: Could not parse ")
     if len(folderkey) == 1:
         folderkey = folderkey[0]
@@ -1609,7 +1685,7 @@ def mediafireFolder(url):
 
         try:
             html = HTML(session.get(url).text)
-        except:
+        except Exception:
             return None
         if html.xpath("//div[@class='passwordPrompt']"):
             if not _password:
@@ -1618,13 +1694,13 @@ def mediafireFolder(url):
                 )
             try:
                 html = HTML(session.post(url, data={"downloadp": _password}).text)
-            except:
+            except Exception:
                 return None
             if html.xpath("//div[@class='passwordPrompt']"):
                 return None
         try:
             final_link = __decode_url(html)
-        except:
+        except Exception:
             return None
         return final_link
 
@@ -1637,7 +1713,7 @@ def mediafireFolder(url):
                 try:
                     final_link = b64decode(scrambled).decode("utf-8")
                     return final_link
-                except:
+                except Exception:
                     return None
             elif final_link.startswith("http"):
                 return final_link
@@ -1801,7 +1877,7 @@ def send_cm(url):
             )
             if "Location" in _res.headers:
                 return _res.headers["Location"]
-        except:
+        except Exception:
             pass
 
     def __getFiles(html):
@@ -2169,7 +2245,7 @@ def mp4upload(url):
             data["referer"] = url
             direct_link = session.post(url, data=data).url
             return direct_link, header
-        except:
+        except Exception:
             raise DirectDownloadLinkException("ERROR: File Not Found!")
 
 
@@ -2267,7 +2343,7 @@ def swisstransfer(link):
     for file in files:
         file_uuid = file["UUID"]
         file_name = file["fileName"]
-        file_size = file["fileSizeInBytes"]
+        file["fileSizeInBytes"]
 
         token = gettoken(password, container_uuid, file_uuid)
         if not token:
@@ -2282,3 +2358,70 @@ def swisstransfer(link):
         "total_size": total_size,
         "header": "User-Agent:Mozilla/5.0",
     }
+
+
+def instagram(link: str) -> str:
+    """
+    Fetches the direct video download URL from an Instagram post.
+
+    Args:
+        link (str): The Instagram post URL.
+
+    Returns:
+        str: The direct video URL.
+
+    Raises:
+        DirectDownloadLinkException: If any error occurs during the process.
+    """
+    api_url = Config.INSTADL_API or "https://instagramcdn.vercel.app"
+    full_url = f"{api_url}/api/video?postUrl={link}"
+
+    try:
+        response = get(full_url)
+        response.raise_for_status()
+        data = response.json()
+
+        if (
+            data.get("status") == "success"
+            and "data" in data
+            and "videoUrl" in data["data"]
+        ):
+            return data["data"]["videoUrl"]
+
+        raise DirectDownloadLinkException("ERROR: Failed to retrieve video URL.")
+
+    except Exception as e:
+        raise DirectDownloadLinkException(f"ERROR: {e}")
+
+
+def debrid_link(url):
+    cget = create_scraper().request
+    resp = cget(
+        "POST",
+        f"https://debrid-link.com/api/v2/downloader/add?access_token={Config.DEBRID_LINK_API}",
+        data={"url": url},
+    ).json()
+    if not resp["success"]:
+        raise DirectDownloadLinkException(
+            f"ERROR: {resp['error']} & ERROR ID: {resp['error_id']}"
+        )
+    if isinstance(resp["value"], dict):
+        return resp["value"]["downloadUrl"]
+    elif isinstance(resp["value"], list):
+        details = {
+            "contents": [],
+            "title": ospath.basename(url.rstrip("/")),
+            "total_size": 0,
+        }
+        for dl in resp["value"]:
+            if dl.get("expired", False):
+                continue
+            item = {
+                "path": ospath.join(details["title"]),
+                "filename": dl["name"],
+                "url": dl["downloadUrl"],
+            }
+            if "size" in dl:
+                details["total_size"] += dl["size"]
+            details["contents"].append(item)
+        return details

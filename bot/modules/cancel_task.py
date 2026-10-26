@@ -1,18 +1,18 @@
 from asyncio import sleep
+from pyrogram.enums import ButtonStyle
 
 from .. import task_dict, task_dict_lock, user_data, multi_tags
-from ..core.config_manager import Config
-from ..core.telegram_manager import TgClient
+from ..core.tg_client import Config
 from ..helper.ext_utils.bot_utils import new_task
 from ..helper.ext_utils.status_utils import (
     get_task_by_gid,
     get_all_tasks,
     MirrorStatus,
 )
+from ..core.tg_client import TgClient
 from ..helper.telegram_helper import button_build
 from ..helper.telegram_helper.bot_commands import BotCommands
 from ..helper.telegram_helper.filters import CustomFilters
-from ..helper.telegram_helper.button_build import ButtonMaker
 from ..helper.telegram_helper.message_utils import (
     send_message,
     auto_delete_message,
@@ -23,16 +23,16 @@ from ..helper.telegram_helper.message_utils import (
 
 @new_task
 async def cancel(_, message):
-    user_id = message.from_user.id if message.from_user else message.sender_chat.id
-    msg = message.text.split()
+    user_id = (message.from_user or message.sender_chat).id
+    msg = message.text.split("_", maxsplit=1)
     if len(msg) > 1:
-        gid = msg[1]
-        if gid in multi_tags:
-            uid = multi_tags[gid]
-            if uid != user_id and not await CustomFilters.sudo("", message):
-                await send_message(message, "Not Yours!")
-                return
-            del multi_tags[gid]
+        cmd_data = msg[1].split("@", maxsplit=1)
+        if len(cmd_data) > 1 and cmd_data[1].strip() != TgClient.BNAME:
+            return
+        gid = cmd_data[0]
+        if len(gid) == 6:
+            multi_tags.discard(gid)
+            return
         else:
             task = await get_task_by_gid(gid)
             if task is None:
@@ -63,38 +63,20 @@ async def cancel(_, message):
 
 
 @new_task
-async def cancel_updates(_, query):
+async def cancel_multi(_, query):
     data = query.data.split()
     user_id = query.from_user.id
-    gid = data[2]
-    task = await get_task_by_gid(gid)
-    if task is None:
-        msg = "Task already cancelled or finished!"
-        await query.answer(msg, show_alert=True)
-        return
-    elif user_id != task.listener.user_id and not await CustomFilters.sudo("", query):
+    if user_id != int(data[1]) and not await CustomFilters.sudo("", query):
         await query.answer("Not Yours!", show_alert=True)
         return
-    elif data[1] == "canconf":
-        await query.answer()
-        button = ButtonMaker()
-        button.data_button("Yes", f"cancel conf {data[2]}", style="green")
-        button.data_button("No", "cancel close", style="red")
-        cmd_msg = (
-            await TgClient.bot.get_messages(query.message.chat.id, task.listener.mid)
-            or query.message
-        )
-        res = await send_message(
-            cmd_msg,
-            "Are you sure you want to cancel this task?",
-            buttons=button.build_menu(2),
-        )
-        await auto_delete_message(res)
-        return
-    await delete_message(query.message)
-    await query.answer()
-    obj = task.task()
-    await obj.cancel_task()
+    tag = int(data[2])
+    if tag in multi_tags:
+        multi_tags.discard(int(data[2]))
+        msg = "Stopped!"
+    else:
+        msg = "Already Stopped/Finished!"
+    await query.answer(msg, show_alert=True)
+    await delete_message(query.message, query.message.reply_to_message)
 
 
 async def cancel_all(status, user_id):
@@ -117,7 +99,7 @@ def create_cancel_buttons(is_sudo, user_id=""):
         "Uploading", f"canall ms {MirrorStatus.STATUS_UPLOAD} {user_id}"
     )
     buttons.data_button("Seeding", f"canall ms {MirrorStatus.STATUS_SEED} {user_id}")
-    buttons.data_button("Splitting", f"canall ms {MirrorStatus.STATUS_SPLIT} {user_id}")
+    buttons.data_button("Spltting", f"canall ms {MirrorStatus.STATUS_SPLIT} {user_id}")
     buttons.data_button("Cloning", f"canall ms {MirrorStatus.STATUS_CLONE} {user_id}")
     buttons.data_button(
         "Extracting", f"canall ms {MirrorStatus.STATUS_EXTRACT} {user_id}"
@@ -145,7 +127,7 @@ def create_cancel_buttons(is_sudo, user_id=""):
             buttons.data_button("All Added Tasks", f"canall bot ms {user_id}")
         else:
             buttons.data_button("My Tasks", f"canall user ms {user_id}")
-    buttons.data_button("Close", f"canall close ms {user_id}")
+    buttons.data_button("Close", f"canall close ms {user_id}", style=ButtonStyle.DANGER)
     return buttons.build_menu(2)
 
 
@@ -174,8 +156,7 @@ async def cancel_all_update(_, query):
     else:
         await query.answer()
     if data[1] == "close":
-        await delete_message(reply_to)
-        await delete_message(message)
+        await delete_message(reply_to, message)
     elif data[1] == "back":
         button = create_cancel_buttons(is_sudo, user_id)
         await edit_message(message, "Choose tasks to cancel!", button)
@@ -189,7 +170,9 @@ async def cancel_all_update(_, query):
         buttons = button_build.ButtonMaker()
         buttons.data_button("Yes!", f"canall {data[2]} confirm {user_id}")
         buttons.data_button("Back", f"canall back confirm {user_id}")
-        buttons.data_button("Close", f"canall close confirm {user_id}")
+        buttons.data_button(
+            "Close", f"canall close confirm {user_id}", style=ButtonStyle.DANGER
+        )
         button = buttons.build_menu(2)
         await edit_message(
             message, f"Are you sure you want to cancel all {data[2]} tasks", button

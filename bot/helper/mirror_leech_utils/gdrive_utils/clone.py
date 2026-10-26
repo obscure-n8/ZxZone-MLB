@@ -25,11 +25,11 @@ class GoogleDriveClone(GoogleDriveHelper):
         self.user_setting()
 
     def user_setting(self):
-        if self.listener.up_dest.startswith("mt:") or self.listener.link.startswith(
-            "mt:"
+        if self.listener.up_dest.startswith("mtp:") or self.listener.link.startswith(
+            "mtp:"
         ):
             self.token_path = f"tokens/{self.listener.user_id}.pickle"
-            self.listener.up_dest = self.listener.up_dest.replace("mt:", "", 1)
+            self.listener.up_dest = self.listener.up_dest.replace("mtp:", "", 1)
             self.use_sa = False
         elif self.listener.up_dest.startswith("tp:"):
             self.listener.up_dest = self.listener.up_dest.replace("tp:", "", 1)
@@ -71,7 +71,7 @@ class GoogleDriveClone(GoogleDriveHelper):
                 self.listener.size = self.proc_bytes
             else:
                 file = self._copy_file(meta.get("id"), self.listener.up_dest)
-                msg += f'<b>Name: </b><code>{file.get("name")}</code>'
+                msg += f"<b>Name: </b><code>{file.get('name')}</code>"
                 durl = self.G_DRIVE_BASE_DOWNLOAD_URL.format(file.get("id"))
                 if mime_type is None:
                     mime_type = "File"
@@ -113,15 +113,12 @@ class GoogleDriveClone(GoogleDriveHelper):
                 file_path = ospath.join(folder_name, file.get("name"))
                 current_dir_id = self.create_directory(file.get("name"), dest_id)
                 self._clone_folder(file_path, file.get("id"), current_dir_id)
-            elif self.listener.included_extensions and not file.get(
-                "name"
-            ).strip().lower().endswith(tuple(self.listener.included_extensions)):
-                continue
-            elif not self.listener.included_extensions and file.get(
-                "name"
-            ).strip().lower().endswith(tuple(self.listener.excluded_extensions)):
-                continue
-            else:
+            elif (
+                not file.get("name")
+                .strip()
+                .lower()
+                .endswith(tuple(self.listener.excluded_extensions))
+            ):
                 self.total_files += 1
                 self._copy_file(file.get("id"), dest_id)
                 self.proc_bytes += int(file.get("size", 0))

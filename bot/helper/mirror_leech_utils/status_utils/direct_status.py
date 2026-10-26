@@ -1,4 +1,5 @@
 from ...ext_utils.status_utils import (
+    EngineStatus,
     MirrorStatus,
     get_readable_file_size,
     get_readable_time,
@@ -10,7 +11,7 @@ class DirectStatus:
         self._gid = gid
         self._obj = obj
         self.listener = listener
-        self.tool = "aria2"
+        self.engine = EngineStatus().STATUS_ARIA2
 
     def gid(self):
         return self._gid
@@ -18,7 +19,7 @@ class DirectStatus:
     def progress_raw(self):
         try:
             return self._obj.processed_bytes / self.listener.size * 100
-        except:
+        except Exception:
             return 0
 
     def progress(self):
@@ -37,7 +38,7 @@ class DirectStatus:
         try:
             seconds = (self.listener.size - self._obj.processed_bytes) / self._obj.speed
             return get_readable_time(seconds)
-        except:
+        except Exception:
             return "-"
 
     def status(self):

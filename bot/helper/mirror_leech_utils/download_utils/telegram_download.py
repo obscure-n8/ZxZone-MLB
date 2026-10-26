@@ -1,20 +1,29 @@
 from asyncio import Lock, sleep
 from time import time
-from pyrogram.errors import FloodWait, FloodPremiumWait
+from secrets import token_hex
+from pyrogram.errors import FloodWait, PeerIdInvalid, ChannelInvalid
+
+from bot.helper.ext_utils.hyperdl_utils import HyperTGDownload
+
+try:
+    from pyrogram.errors import FloodPremiumWait
+except ImportError:
+    FloodPremiumWait = FloodWait
 
 from .... import (
     LOGGER,
     task_dict,
     task_dict_lock,
 )
-from ....core.telegram_manager import TgClient
+from ....core.tg_client import TgClient
+from ....core.config_manager import Config
 from ...ext_utils.task_manager import check_running_tasks, stop_duplicate_check
 from ...mirror_leech_utils.status_utils.queue_status import QueueStatus
 from ...mirror_leech_utils.status_utils.telegram_status import TelegramStatus
 from ...telegram_helper.message_utils import send_status_message
 
 global_lock = Lock()
-GLOBAL_GID = set()
+GLOBAL_GID = dict()
 
 
 class TelegramDownloadHelper:
@@ -24,6 +33,7 @@ class TelegramDownloadHelper:
         self._listener = listener
         self._id = ""
         self.session = ""
+        self._hyper_dl = len(TgClient.helper_bots) != 0 and Config.LEECH_DUMP_CHAT
 
     @property
     def speed(self):
@@ -33,13 +43,13 @@ class TelegramDownloadHelper:
     def processed_bytes(self):
         return self._processed_bytes
 
-    async def _on_download_start(self, file_id, from_queue):
+    async def _on_download_start(self, file_id, gid, from_queue):
         async with global_lock:
-            GLOBAL_GID.add(file_id)
+            GLOBAL_GID[file_id] = gid
         self._id = file_id
         async with task_dict_lock:
             task_dict[self._listener.mid] = TelegramStatus(
-                self._listener, self, file_id[:12], "dl"
+                self._listener, self, gid, "dl", self._hyper_dl
             )
         if not from_queue:
             await self._listener.on_download_start()
@@ -53,6 +63,9 @@ class TelegramDownloadHelper:
         if self._listener.is_cancelled:
             if self.session == "user":
                 TgClient.user.stop_transmission()
+            elif self.session == "hbots":
+                for hbot in TgClient.helper_bots.values():
+                    hbot.stop_transmission()
             else:
                 TgClient.bot.stop_transmission()
         self._processed_bytes = current
@@ -60,20 +73,47 @@ class TelegramDownloadHelper:
     async def _on_download_error(self, error):
         async with global_lock:
             if self._id in GLOBAL_GID:
-                GLOBAL_GID.remove(self._id)
+                GLOBAL_GID.pop(self._id)
         await self._listener.on_download_error(error)
 
     async def _on_download_complete(self):
-        async with global_lock:
-            if self._id in GLOBAL_GID:
-                GLOBAL_GID.remove(self._id)
         await self._listener.on_download_complete()
+        async with global_lock:
+            GLOBAL_GID.pop(self._id)
+        return
 
     async def _download(self, message, path):
         try:
-            download = await message.download(
-                file_name=path, progress=self._on_download_progress
-            )
+            # TODO : Add support for user session ( Huh ??)
+            if self._hyper_dl:
+                try:
+                    download = await HyperTGDownload().download_media(
+                        message,
+                        file_name=path,
+                        progress=self._on_download_progress,
+                        dump_chat=Config.LEECH_DUMP_CHAT,
+                    )
+                except Exception:
+                    if getattr(Config, "USER_TRANSMISSION", False):
+                        try:
+                            user_message = await TgClient.user.get_messages(
+                                chat_id=message.chat.id, message_ids=message.id
+                            )
+                            download = await user_message.download(
+                                file_name=path, progress=self._on_download_progress
+                            )
+                        except Exception:
+                            download = await message.download(
+                                file_name=path, progress=self._on_download_progress
+                            )
+                    else:
+                        download = await message.download(
+                            file_name=path, progress=self._on_download_progress
+                        )
+            else:
+                download = await message.download(
+                    file_name=path, progress=self._on_download_progress
+                )
             if self._listener.is_cancelled:
                 return
         except (FloodWait, FloodPremiumWait) as f:
@@ -82,35 +122,34 @@ class TelegramDownloadHelper:
             await self._download(message, path)
             return
         except Exception as e:
-            LOGGER.error(str(e))
+            LOGGER.error(str(e), exc_info=True)
             await self._on_download_error(str(e))
             return
         if download is not None:
             await self._on_download_complete()
         elif not self._listener.is_cancelled:
             await self._on_download_error("Internal error occurred")
+        return
 
     async def add_download(self, message, path, session):
         self.session = session
         if not self.session:
-            if self._listener.user_transmission and self._listener.is_super_chat:
+            if self._hyper_dl:
+                self.session = "hbots"
+            elif self._listener.user_transmission and self._listener.is_super_chat:
                 self.session = "user"
-                message = await TgClient.user.get_messages(
-                    chat_id=message.chat.id, message_ids=message.id
-                )
+                try:
+                    message = await TgClient.user.get_messages(
+                        chat_id=message.chat.id, message_ids=message.id
+                    )
+                except (PeerIdInvalid, ChannelInvalid):
+                    LOGGER.warning(
+                        "User session is not in this chat!, Downloading with bot session"
+                    )
+                    self.session = "bot"
             else:
                 self.session = "bot"
-        media = (
-            message.document
-            or message.photo
-            or message.video
-            or message.audio
-            or message.voice
-            or message.video_note
-            or message.sticker
-            or message.animation
-            or None
-        )
+        media = getattr(message, message.media.value) if message.media else None
 
         if media is not None:
             async with global_lock:
@@ -129,7 +168,7 @@ class TelegramDownloadHelper:
                 else:
                     path = path + self._listener.name
                 self._listener.size = media.file_size
-                gid = media.file_unique_id
+                gid = token_hex(5)
 
                 msg, button = await stop_duplicate_check(self._listener)
                 if msg:
@@ -152,16 +191,21 @@ class TelegramDownloadHelper:
                             chat_id=message.chat.id, message_ids=message.id
                         )
                     else:
-                        message = await TgClient.user.get_messages(
-                            chat_id=message.chat.id, message_ids=message.id
-                        )
+                        try:
+                            message = await TgClient.user.get_messages(
+                                chat_id=message.chat.id, message_ids=message.id
+                            )
+                        except (PeerIdInvalid, ChannelInvalid):
+                            message = await self._listener.client.get_messages(
+                                chat_id=message.chat.id, message_ids=message.id
+                            )
                     if self._listener.is_cancelled:
                         async with global_lock:
                             if self._id in GLOBAL_GID:
-                                GLOBAL_GID.remove(self._id)
+                                GLOBAL_GID.pop(self._id)
                         return
                 self._start_time = time()
-                await self._on_download_start(gid, add_to_queue)
+                await self._on_download_start(media.file_unique_id, gid, add_to_queue)
                 await self._download(message, path)
             else:
                 await self._on_download_error("File already being downloaded!")

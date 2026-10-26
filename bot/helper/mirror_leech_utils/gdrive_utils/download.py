@@ -1,7 +1,6 @@
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaIoBaseDownload
 from io import FileIO
-from time import time
 from logging import getLogger
 from os import makedirs, path as ospath
 from tenacity import (
@@ -18,37 +17,19 @@ from ...mirror_leech_utils.gdrive_utils.helper import GoogleDriveHelper
 
 LOGGER = getLogger(__name__)
 
-EXPORT_MAP = {
-    "application/vnd.google-apps.document": {
-        "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "ext": ".docx",
-    },
-    "application/vnd.google-apps.spreadsheet": {
-        "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "ext": ".xlsx",
-    },
-    "application/vnd.google-apps.presentation": {
-        "mime": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-        "ext": ".pptx",
-    },
-    "application/vnd.google-apps.drawing": {
-        "mime": "image/png",
-        "ext": ".png",
-    },
-}
-
 
 class GoogleDriveDownload(GoogleDriveHelper):
     def __init__(self, listener, path):
         self.listener = listener
+        self._updater = None
         self._path = path
-        self._start_time = time()
         super().__init__()
         self.is_downloading = True
 
     def download(self):
         file_id = self.get_id_from_url(self.listener.link, self.listener.user_id)
         self.service = self.authorize()
+        self._updater = SetInterval(self.update_interval, self.progress)
         try:
             meta = self.get_file_metadata(file_id)
             if meta.get("mimeType") == self.G_DRIVE_DIR_MIME_TYPE:
@@ -56,11 +37,7 @@ class GoogleDriveDownload(GoogleDriveHelper):
             else:
                 makedirs(self._path, exist_ok=True)
                 self._download_file(
-                    file_id,
-                    self._path,
-                    self.listener.name,
-                    meta.get("mimeType"),
-                    meta.get("size", 0),
+                    file_id, self._path, self.listener.name, meta.get("mimeType")
                 )
         except Exception as err:
             if isinstance(err, RetryError):
@@ -74,13 +51,17 @@ class GoogleDriveDownload(GoogleDriveHelper):
                     self.alt_auth = True
                     self.use_sa = False
                     LOGGER.error("File not found. Trying with token.pickle...")
+                    self._updater.cancel()
                     return self.download()
                 err = "File not found!"
             async_to_sync(self.listener.on_download_error, err)
             self.listener.is_cancelled = True
         finally:
-            if not self.listener.is_cancelled:
-                async_to_sync(self.listener.on_download_complete)
+            self._updater.cancel()
+            if self.listener.is_cancelled:
+                return
+            async_to_sync(self.listener.on_download_complete)
+            return
 
     def _download_folder(self, folder_id, path, folder_name):
         folder_name = folder_name.replace("/", "")
@@ -102,26 +83,12 @@ class GoogleDriveDownload(GoogleDriveHelper):
                 mime_type = item.get("mimeType")
             if mime_type == self.G_DRIVE_DIR_MIME_TYPE:
                 self._download_folder(file_id, path, filename)
-            elif ospath.isfile(f"{path}{filename}"):
-                continue
-            elif (
-                self.listener.included_extensions
-                and not filename.strip()
-                .lower()
-                .endswith(tuple(self.listener.included_extensions))
+            elif not ospath.isfile(
+                f"{path}{filename}"
+            ) and not filename.strip().lower().endswith(
+                tuple(self.listener.excluded_extensions)
             ):
-                continue
-            elif (
-                not self.listener.included_extensions
-                and filename.strip()
-                .lower()
-                .endswith(tuple(self.listener.excluded_extensions))
-            ):
-                continue
-            else:
-                self._download_file(
-                    file_id, path, filename, mime_type, item.get("size", 0)
-                )
+                self._download_file(file_id, path, filename, mime_type)
             if self.listener.is_cancelled:
                 break
 
@@ -130,31 +97,18 @@ class GoogleDriveDownload(GoogleDriveHelper):
         stop=stop_after_attempt(3),
         retry=retry_if_exception_type(Exception),
     )
-    def _download_file(
-        self,
-        file_id,
-        path,
-        filename,
-        mime_type,
-        file_size,
-    ):
-        if mime_type.startswith("application/vnd.google-apps"):
-            export = EXPORT_MAP.get(
-                mime_type,
-                {
-                    "mime": "application/pdf",
-                    "ext": ".pdf",
-                },
-            )
+    def _download_file(self, file_id, path, filename, mime_type, export=False):
+        if export:
             request = self.service.files().export_media(
-                fileId=file_id, mimeType=export["mime"]
+                fileId=file_id, mimeType="application/pdf"
             )
-            filename = f"{filename}{export["ext"]}"
         else:
             request = self.service.files().get_media(
                 fileId=file_id, supportsAllDrives=True, acknowledgeAbuse=True
             )
         filename = filename.replace("/", "")
+        if export:
+            filename = f"{filename}.pdf"
         if len(filename.encode()) > 255:
             ext = ospath.splitext(filename)[1]
             filename = f"{filename[:245]}{ext}"
@@ -173,12 +127,6 @@ class GoogleDriveDownload(GoogleDriveHelper):
                 break
             try:
                 self.status, done = downloader.next_chunk()
-                self.progress()
-                if self.status is None:
-                    if self.file_processed_bytes and done:
-                        self.proc_bytes += file_size - self.file_processed_bytes
-                    else:
-                        self.proc_bytes += file_size
             except HttpError as err:
                 LOGGER.error(err)
                 if err.resp.status in [500, 502, 503, 504, 429] and retries < 10:
@@ -189,7 +137,6 @@ class GoogleDriveDownload(GoogleDriveHelper):
                         eval(err.content).get("error").get("errors")[0].get("reason")
                     )
                     if "fileNotDownloadable" in reason and "document" in mime_type:
-                        self.proc_bytes -= self.file_processed_bytes
                         return self._download_file(
                             file_id, path, filename, mime_type, True
                         )
@@ -209,7 +156,6 @@ class GoogleDriveDownload(GoogleDriveHelper):
                                 return
                             self.switch_service_account()
                             LOGGER.info(f"Got: {reason}, Trying Again...")
-                            self.proc_bytes -= self.file_processed_bytes
                             return self._download_file(
                                 file_id, path, filename, mime_type
                             )

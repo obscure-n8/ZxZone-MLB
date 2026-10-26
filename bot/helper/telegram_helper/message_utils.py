@@ -1,81 +1,166 @@
-from asyncio import sleep
-from pyrogram.errors import FloodWait, FloodPremiumWait
+from asyncio import sleep, gather
 from re import match as re_match
 from time import time
 
-from ... import LOGGER, status_dict, task_dict_lock, intervals, DOWNLOAD_DIR
+from pyrogram.types import Message
+from pyrogram.enums import ParseMode
+from pyrogram.errors import (
+    FloodWait,
+    MessageNotModified,
+    MessageEmpty,
+    ReplyMarkupInvalid,
+    PhotoInvalidDimensions,
+    WebpageCurlFailed,
+    MediaEmpty,
+    MediaCaptionTooLong,
+    EntityBoundsInvalid,
+    PeerIdInvalid,
+)
+
+try:
+    from pyrogram.errors import FloodPremiumWait
+except ImportError:
+    FloodPremiumWait = FloodWait
+
+from ... import LOGGER, intervals, status_dict, task_dict_lock
 from ...core.config_manager import Config
-from ...core.telegram_manager import TgClient
+from ...core.tg_client import TgClient
 from ..ext_utils.bot_utils import SetInterval
 from ..ext_utils.exceptions import TgLinkException
 from ..ext_utils.status_utils import get_readable_message
 
 
-async def send_message(message, text, buttons=None, block=True):
+async def send_message(message, text, buttons=None, block=True, photo=None, **kwargs):
     try:
+        if photo:
+            try:
+                if isinstance(message, int):
+                    return await TgClient.bot.send_photo(
+                        chat_id=message,
+                        photo=photo,
+                        caption=text,
+                        reply_markup=buttons,
+                        disable_notification=True,
+                        **kwargs,
+                    )
+                return await message.reply_photo(
+                    photo=photo,
+                    reply_to_message_id=message.id,
+                    caption=text,
+                    quote=True,
+                    reply_markup=buttons,
+                    disable_notification=True,
+                    **kwargs,
+                )
+            except FloodWait as f:
+                LOGGER.warning(str(f))
+                if not block:
+                    return str(f)
+                await sleep(f.value * 1.2)
+                return await send_message(message, text, buttons, block, photo)
+            except MediaCaptionTooLong:
+                return await send_message(
+                    message,
+                    text[:1024],
+                    buttons,
+                    block,
+                    photo,
+                )
+            except (PhotoInvalidDimensions, WebpageCurlFailed, MediaEmpty):
+                LOGGER.error("Invalid photo dimensions or empty media", exc_info=True)
+                return
+            except Exception:
+                LOGGER.error("Error while sending photo", exc_info=True)
+                return
+        if isinstance(message, int):
+            return await TgClient.bot.send_message(
+                chat_id=message,
+                text=text,
+                disable_web_page_preview=True,
+                disable_notification=True,
+                reply_markup=buttons,
+            )
         return await message.reply(
             text=text,
+            quote=True,
+            disable_web_page_preview=True,
             disable_notification=True,
             reply_markup=buttons,
+            **kwargs,
         )
     except FloodWait as f:
         LOGGER.warning(str(f))
         if not block:
             return str(f)
         await sleep(f.value * 1.2)
-        return await send_message(message, text, buttons, block)
+        return await send_message(message, text, buttons)
+    except ReplyMarkupInvalid as rmi:
+        LOGGER.warning(str(rmi))
+        return await send_message(message, text, None)
+    except (MessageEmpty, EntityBoundsInvalid):
+        return await send_message(message, text, parse_mode=ParseMode.DISABLED)
+    except PeerIdInvalid:
+        if isinstance(message, int):
+            await TgClient.bot.resolve_peer(message)
+            return await send_message(message, text, buttons, block, photo)
+        raise
     except Exception as e:
-        LOGGER.error(str(e))
+        LOGGER.error(str(e), exc_info=True)
         return str(e)
 
 
-async def send_rich_message(message, rich_input, buttons=None, block=True):
-    try:
-        return await message.reply_rich(
-            rich_message=rich_input,
-            disable_notification=True,
-            reply_markup=buttons,
-        )
-    except FloodWait as f:
-        LOGGER.warning(str(f))
-        if not block:
-            return str(f)
-        await sleep(f.value * 1.2)
-        return await send_rich_message(message, rich_input, buttons, block)
-    except Exception as e:
-        LOGGER.error(str(e))
-        return str(e)
-
-
-async def edit_message(message, text=None, buttons=None, block=True, rich_message=None):
+async def edit_message(message, text, buttons=None, block=True):
     try:
         return await message.edit(
             text=text,
+            disable_web_page_preview=True,
             reply_markup=buttons,
-            rich_message=rich_message,
         )
+    except (MessageNotModified, MessageEmpty):
+        pass
+    except ReplyMarkupInvalid as rmi:
+        LOGGER.warning(str(rmi))
+        return await edit_message(message, text, None)
     except FloodWait as f:
         LOGGER.warning(str(f))
         if not block:
             return str(f)
         await sleep(f.value * 1.2)
-        return await edit_message(message, text, buttons, block, rich_message)
+        return await edit_message(message, text, buttons)
     except Exception as e:
-        LOGGER.error(str(e))
+        LOGGER.error(str(e), exc_info=True)
         return str(e)
 
 
-async def send_file(message, file, caption=""):
+async def edit_reply_markup(message, buttons):
+    try:
+        return await message.edit_reply_markup(reply_markup=buttons)
+    except MessageNotModified:
+        pass
+    except FloodWait as f:
+        LOGGER.warning(str(f))
+        await sleep(f.value * 1.2)
+        return await edit_reply_markup(message, buttons)
+    except Exception as e:
+        LOGGER.error(str(e), exc_info=True)
+        return str(e)
+
+
+async def send_file(message, file, caption="", buttons=None):
     try:
         return await message.reply_document(
-            document=file, caption=caption, disable_notification=True
+            document=file,
+            quote=True,
+            caption=caption,
+            disable_notification=True,
+            reply_markup=buttons,
         )
     except FloodWait as f:
         LOGGER.warning(str(f))
         await sleep(f.value * 1.2)
         return await send_file(message, file, caption)
     except Exception as e:
-        LOGGER.error(str(e))
+        LOGGER.error(str(e), exc_info=True)
         return str(e)
 
 
@@ -84,6 +169,7 @@ async def send_rss(text, chat_id, thread_id):
         return await TgClient.bot.send_message(
             chat_id=chat_id,
             text=text,
+            disable_web_page_preview=True,
             message_thread_id=thread_id,
             disable_notification=True,
         )
@@ -92,23 +178,28 @@ async def send_rss(text, chat_id, thread_id):
         await sleep(f.value * 1.2)
         return await send_rss(text, chat_id, thread_id)
     except Exception as e:
-        LOGGER.error(str(e))
+        LOGGER.error(str(e), exc_info=True)
         return str(e)
 
 
-async def delete_message(message):
-    try:
-        await message.delete()
-    except Exception as e:
-        LOGGER.error(str(e))
+async def delete_message(*args):
+    tasks = [msg.delete() for msg in args if isinstance(msg, Message)]
+    if not tasks:
+        return
+    results = await gather(*tasks, return_exceptions=True)
+    for result in results:
+        if isinstance(result, Exception):
+            LOGGER.error(result)
 
 
-async def auto_delete_message(cmd_message=None, bot_message=None):
-    await sleep(60)
-    if cmd_message is not None:
-        await delete_message(cmd_message)
-    if bot_message is not None:
-        await delete_message(bot_message)
+async def delete_links(message):
+    if Config.DELETE_LINKS:
+        await delete_message(message, message.reply_to_message)
+
+
+async def auto_delete_message(*args, stime=90):
+    await sleep(stime)
+    await delete_message(*args)
 
 
 async def delete_status():
@@ -124,23 +215,29 @@ async def delete_status():
 async def get_tg_link_message(link):
     message = None
     links = []
-    if link.startswith("https://t.me/"):
+    if link.startswith(
+        (
+            "https://t.me/",
+            "https://telegram.me/",
+            "https://telegram.dog/",
+            "https://telegram.space/",
+        )
+    ):
         private = False
         msg = re_match(
-            r"https:\/\/t\.me\/(?:c\/)?([^\/]+)\/(?:\d+\/)*([0-9-]+)",
+            r"https:\/\/(t\.me|telegram\.me|telegram\.dog|telegram\.space)\/(?:c\/)?([^\/]+)(?:\/[^\/]+)?\/([0-9-]+)",
             link,
         )
     else:
         private = True
         msg = re_match(
-            r"tg:\/\/openmessage\?user_id=([0-9]+)&message_id=([0-9-]+)", link
+            r"tg:\/\/(openmessage)\?user_id=([0-9]+)&message_id=([0-9-]+)", link
         )
         if not TgClient.user:
             raise TgLinkException("USER_SESSION_STRING required for this private link!")
-    if not msg:
-        raise TgLinkException("Wrong link format!")
-    chat = msg[1]
-    msg_id = msg[2]
+
+    chat = msg[2]
+    msg_id = msg[3]
     if "-" in msg_id:
         start_id, end_id = msg_id.split("-")
         msg_id = start_id = int(start_id)
@@ -187,15 +284,8 @@ async def get_tg_link_message(link):
             ) from e
         if not user_message.empty:
             return (links, "user") if links else (user_message, "user")
-        else:
-            raise TgLinkException("Private: Can't get this message!")
     else:
-        raise TgLinkException("Private: Can't get this message!")
-
-
-async def temp_download(msg):
-    path = f"{DOWNLOAD_DIR}temp"
-    return await msg.download(file_name=f"{path}/")
+        raise TgLinkException("Private: Please report!")
 
 
 async def update_status_message(sid, force=False):
@@ -225,11 +315,7 @@ async def update_status_message(sid, force=False):
             return
         if text != status_dict[sid]["message"].text:
             message = await edit_message(
-                status_dict[sid]["message"],
-                None,
-                buttons,
-                block=False,
-                rich_message=text,
+                status_dict[sid]["message"], text, buttons, block=False
             )
             if isinstance(message, str):
                 if message.startswith("Telegram says: [40"):
@@ -266,7 +352,7 @@ async def send_status_message(msg, user_id=0):
                     del intervals["status"][sid]
                 return
             old_message = status_dict[sid]["message"]
-            message = await send_rich_message(msg, text, buttons, block=False)
+            message = await send_message(msg, text, buttons, block=False)
             if isinstance(message, str):
                 LOGGER.error(
                     f"Status with id: {sid} haven't been sent. Error: {message}"
@@ -279,7 +365,7 @@ async def send_status_message(msg, user_id=0):
             text, buttons = await get_readable_message(sid, is_user)
             if text is None:
                 return
-            message = await send_rich_message(msg, text, buttons, block=False)
+            message = await send_message(msg, text, buttons, block=False)
             if isinstance(message, str):
                 LOGGER.error(
                     f"Status with id: {sid} haven't been sent. Error: {message}"

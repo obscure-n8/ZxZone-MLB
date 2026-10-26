@@ -1,5 +1,6 @@
 from asyncio import wait_for, Event, sleep
 from functools import partial
+from pyrogram.enums import ButtonStyle
 from pyrogram.filters import regex, user
 from pyrogram.handlers import CallbackQueryHandler
 from time import time
@@ -18,7 +19,11 @@ from .... import (
 )
 from ...ext_utils.bot_utils import new_task
 from ....core.jdownloader_booter import jdownloader
-from ...ext_utils.task_manager import check_running_tasks, stop_duplicate_check
+from ...ext_utils.task_manager import (
+    check_running_tasks,
+    stop_duplicate_check,
+    limit_checker,
+)
 from ...listeners.jdownloader_listener import on_download_start
 from ...mirror_leech_utils.status_utils.jdownloader_status import JDownloaderStatus
 from ...mirror_leech_utils.status_utils.queue_status import QueueStatus
@@ -61,7 +66,7 @@ class JDownloaderHelper:
         )
         try:
             await wait_for(self.event.wait(), timeout=self._timeout)
-        except:
+        except Exception:
             await edit_message(self._reply_to, "Timed Out. Task has been cancelled!")
             self.listener.is_cancelled = True
             self.event.set()
@@ -71,8 +76,8 @@ class JDownloaderHelper:
     async def wait_for_configurations(self):
         buttons = ButtonMaker()
         buttons.url_button("Select", "https://my.jdownloader.org")
-        buttons.data_button("Done Selecting", "jdq sdone")
-        buttons.data_button("Cancel", "jdq cancel")
+        buttons.data_button("Done Selecting", "jdq sdone", style=ButtonStyle.SUCCESS)
+        buttons.data_button("Cancel", "jdq cancel", style=ButtonStyle.DANGER)
         button = buttons.build_menu(2)
         msg = f"Remove the unwanted files or change variants or edit files names from myJdownloader site for <b>{self.listener.name}</b>.\nDon't start it manually!\n\nAfter finish press Done Selecting!\nTimeout: 10 min"
         self._reply_to = await send_message(self.listener.message, msg, button)
@@ -110,7 +115,7 @@ async def get_jd_download_directory():
     res = await jdownloader.device.config.get(
         "org.jdownloader.settings.GeneralSettings", None, "DefaultDownloadFolder"
     )
-    return f'/{res.strip("/")}/'
+    return f"/{res.strip('/')}/"
 
 
 async def add_jd_download(listener, path):
@@ -158,6 +163,7 @@ async def add_jd_download(listener, path):
                         }
                     ],
                 )
+
             await sleep(1)
             LOGGER.info(f"JDownloader Collecting Data: {listener.link}")
             while await jdownloader.device.linkgrabber.is_collecting():
@@ -255,6 +261,15 @@ async def add_jd_download(listener, path):
                 package_ids=online_packages
             )
             await listener.on_download_error(msg, button)
+            async with jd_listener_lock:
+                del jd_downloads[gid]
+            return
+
+        if limit_exceeded := await limit_checker(listener):
+            await jdownloader.device.linkgrabber.remove_links(
+                package_ids=online_packages
+            )
+            await listener.on_download_error(limit_exceeded, is_limit=True)
             async with jd_listener_lock:
                 del jd_downloads[gid]
             return

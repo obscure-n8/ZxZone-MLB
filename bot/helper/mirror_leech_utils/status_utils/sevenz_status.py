@@ -1,9 +1,11 @@
 from time import time
+from contextlib import suppress
 
 from .... import LOGGER
 from ...ext_utils.status_utils import (
     get_readable_file_size,
     MirrorStatus,
+    EngineStatus,
     get_readable_time,
 )
 
@@ -15,7 +17,7 @@ class SevenZStatus:
         self._gid = gid
         self._start_time = time()
         self._cstatus = status
-        self.tool = "7z"
+        self.engine = EngineStatus().STATUS_7Z
 
     def gid(self):
         return self._gid
@@ -44,7 +46,7 @@ class SevenZStatus:
                 self.listener.subsize - self._obj.processed_bytes
             ) / self._speed_raw()
             return get_readable_time(seconds)
-        except:
+        except ZeroDivisionError:
             return "-"
 
     def status(self):
@@ -63,8 +65,6 @@ class SevenZStatus:
             self.listener.subproc is not None
             and self.listener.subproc.returncode is None
         ):
-            try:
+            with suppress(Exception):
                 self.listener.subproc.kill()
-            except:
-                pass
         await self.listener.on_upload_error(f"{self._cstatus} stopped by user!")

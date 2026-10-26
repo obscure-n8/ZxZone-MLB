@@ -1,45 +1,56 @@
-from aiofiles.os import path as aiopath, remove, makedirs
-from aiofiles import open as aiopen
-from aioshutil import rmtree
 from asyncio import create_subprocess_exec, create_subprocess_shell, sleep
 from importlib import import_module
+from os import environ, getenv, path as ospath
+
+from aiofiles import open as aiopen
+from aiofiles.os import makedirs, remove, path as aiopath
+from aioshutil import rmtree
+
 
 from .. import (
+    LOGGER,
     aria2_options,
-    qbit_options,
-    nzb_options,
+    auth_chats,
     drives_ids,
     drives_names,
     index_urls,
+    shortener_dict,
+    var_list,
     user_data,
     excluded_extensions,
-    included_extensions,
-    LOGGER,
+    nzb_options,
+    qbit_options,
     rss_dict,
     sabnzbd_client,
-    auth_chats,
     sudo_users,
 )
 from ..helper.ext_utils.db_handler import database
-from .config_manager import Config
-from .telegram_manager import TgClient
+from .config_manager import Config, BinConfig
+from .tg_client import TgClient
 from .torrent_manager import TorrentManager
 
 
 async def update_qb_options():
     LOGGER.info("Get qBittorrent options from server")
     if not qbit_options:
+        if not TorrentManager.qbittorrent:
+            LOGGER.warning(
+                "qBittorrent is not initialized. Skipping qBittorrent options update."
+            )
+            return
         opt = await TorrentManager.qbittorrent.app.preferences()
         qbit_options.update(opt)
         del qbit_options["listen_port"]
         for k in list(qbit_options.keys()):
             if k.startswith("rss"):
                 del qbit_options[k]
-        qbit_options["web_ui_password"] = "mltbmltb"
+        qbit_options["web_ui_password"] = "admin1"
         await TorrentManager.qbittorrent.app.set_preferences(
-            {"web_ui_password": "mltbmltb"}
+            {"web_ui_password": "admin1"}
         )
     else:
+        if qbit_options.get("web_ui_password") == "admin":
+            qbit_options["web_ui_password"] = "admin1"
         await TorrentManager.qbittorrent.app.set_preferences(qbit_options)
 
 
@@ -53,128 +64,151 @@ async def update_aria2_options():
 
 
 async def update_nzb_options():
-    LOGGER.info("Get SABnzbd options from server")
-    while True:
-        try:
-            no = (await sabnzbd_client.get_config())["config"]["misc"]
-            nzb_options.update(no)
-        except:
-            await sleep(0.5)
-            continue
-        break
+    if Config.USENET_SERVERS:
+        LOGGER.info("Get SABnzbd options from server")
+        while True:
+            try:
+                no = (await sabnzbd_client.get_config())["config"]["misc"]
+                nzb_options.update(no)
+            except Exception:
+                await sleep(0.5)
+                continue
+            break
 
 
 async def load_settings():
     if not Config.DATABASE_URL:
         return
-
     for p in ["thumbnails", "tokens", "rclone"]:
         if await aiopath.exists(p):
             await rmtree(p, ignore_errors=True)
-
     await database.connect()
-    if database.db is None:
-        return
-
-    BOT_ID = Config.BOT_TOKEN.split(":", 1)[0]
-
-    try:
-        settings = import_module("config")
-        config_file = {
-            key: value.strip() if isinstance(value, str) else value
-            for key, value in vars(settings).items()
-            if not key.startswith("__")
-        }
-    except ModuleNotFoundError:
-        config_file = {}
-
-    old_config = await database.db.settings.deployConfig.find_one(
-        {"_id": BOT_ID}, {"_id": 0}
-    )
-    if old_config is None and config_file:
-        await database.db.settings.deployConfig.replace_one(
-            {"_id": BOT_ID}, config_file, upsert=True
+    if database.db is not None:
+        BOT_ID = Config.BOT_TOKEN.split(":", 1)[0]
+        try:
+            settings = import_module("config")
+            config_file = {
+                key: value.strip() if isinstance(value, str) else value
+                for key, value in vars(settings).items()
+                if not key.startswith("__")
+            }
+        except ModuleNotFoundError:
+            config_file = {}
+        config_file.update(
+            {
+                key: value.strip() if isinstance(value, str) else value
+                for key, value in environ.items()
+                if key in var_list
+            }
         )
-    elif old_config and config_file and old_config != config_file:
-        LOGGER.info("Replacing existing deploy config in Database")
-        await database.db.settings.deployConfig.replace_one(
-            {"_id": BOT_ID}, config_file, upsert=True
-        )
-    else:
-        config_dict = await database.db.settings.config.find_one(
+
+        old_config = await database.db.settings.deployConfig.find_one(
             {"_id": BOT_ID}, {"_id": 0}
         )
-        if config_dict:
-            Config.load_dict(config_dict)
+        if old_config is None:
+            await database.db.settings.deployConfig.replace_one(
+                {"_id": BOT_ID}, config_file, upsert=True
+            )
+        if old_config and old_config != config_file:
+            LOGGER.info("Saving.. Deploy Config imported from Bot")
+            await database.db.settings.deployConfig.replace_one(
+                {"_id": BOT_ID}, config_file, upsert=True
+            )
+            config_dict = (
+                await database.db.settings.config.find_one({"_id": BOT_ID}, {"_id": 0})
+                or {}
+            )
+            config_dict.update(config_file)
+            if config_dict:
+                Config.load_dict(config_dict)
+        else:
+            LOGGER.info("Updating.. Saved Config imported from MongoDB")
+            config_dict = await database.db.settings.config.find_one(
+                {"_id": BOT_ID}, {"_id": 0}
+            )
+            if config_dict:
+                Config.load_dict(config_dict)
 
-    if pf_dict := await database.db.settings.files.find_one(
-        {"_id": BOT_ID}, {"_id": 0}
-    ):
-        for key, value in pf_dict.items():
-            if value:
-                file_ = key.replace("__", ".")
-                async with aiopen(file_, "wb+") as f:
-                    await f.write(value)
+        if pf_dict := await database.db.settings.files.find_one(
+            {"_id": BOT_ID}, {"_id": 0}
+        ):
+            for key, value in pf_dict.items():
+                if value:
+                    file_ = key.replace("__", ".")
+                    async with aiopen(file_, "wb+") as f:
+                        await f.write(value)
 
-    if a2c_options := await database.db.settings.aria2c.find_one(
-        {"_id": BOT_ID}, {"_id": 0}
-    ):
-        aria2_options.update(a2c_options)
+        if a2c_options := await database.db.settings.aria2c.find_one(
+            {"_id": BOT_ID}, {"_id": 0}
+        ):
+            aria2_options.update(a2c_options)
 
-    if qbit_opt := await database.db.settings.qbittorrent.find_one(
-        {"_id": BOT_ID}, {"_id": 0}
-    ):
-        qbit_options.update(qbit_opt)
+        if not Config.DISABLE_TORRENTS:
+            if qbit_opt := await database.db.settings.qbittorrent.find_one(
+                {"_id": BOT_ID}, {"_id": 0}
+            ):
+                qbit_options.update(qbit_opt)
 
-    if nzb_opt := await database.db.settings.nzb.find_one({"_id": BOT_ID}, {"_id": 0}):
-        if await aiopath.exists("sabnzbd/SABnzbd.ini.bak"):
-            await remove("sabnzbd/SABnzbd.ini.bak")
-        ((key, value),) = nzb_opt.items()
-        file_ = key.replace("__", ".")
-        async with aiopen(f"sabnzbd/{file_}", "wb+") as f:
-            await f.write(value)
+        if nzb_opt := await database.db.settings.nzb.find_one(
+            {"_id": BOT_ID}, {"_id": 0}
+        ):
+            if await aiopath.exists("sabnzbd/SABnzbd.ini.bak"):
+                await remove("sabnzbd/SABnzbd.ini.bak")
+            ((key, value),) = nzb_opt.items()
+            file_ = key.replace("__", ".")
+            async with aiopen(f"sabnzbd/{file_}", "wb+") as f:
+                await f.write(value)
+            LOGGER.info("Loaded.. Sabnzbd Data from MongoDB")
 
-    if await database.db.users.find_one():
-        for p in ["thumbnails", "tokens", "rclone"]:
-            if not await aiopath.exists(p):
-                await makedirs(p)
-        rows = database.db.users.find({})
-        async for row in rows:
-            uid = row["_id"]
-            del row["_id"]
-            thumb_path = f"thumbnails/{uid}.jpg"
-            rclone_config_path = f"rclone/{uid}.conf"
-            token_path = f"tokens/{uid}.pickle"
-            if row.get("THUMBNAIL"):
-                async with aiopen(thumb_path, "wb+") as f:
-                    await f.write(row["THUMBNAIL"])
-                row["THUMBNAIL"] = thumb_path
-            if row.get("RCLONE_CONFIG"):
-                async with aiopen(rclone_config_path, "wb+") as f:
-                    await f.write(row["RCLONE_CONFIG"])
-                row["RCLONE_CONFIG"] = rclone_config_path
-            if row.get("TOKEN_PICKLE"):
-                async with aiopen(token_path, "wb+") as f:
-                    await f.write(row["TOKEN_PICKLE"])
-                row["TOKEN_PICKLE"] = token_path
-            user_data[uid] = row
-        LOGGER.info("Users data has been imported from Database")
+        if await database.db.users[BOT_ID].find_one():
+            rows = database.db.users[BOT_ID].find({})
+            async for row in rows:
+                uid = row["_id"]
+                del row["_id"]
+                paths = {
+                    "THUMBNAIL": f"thumbnails/{uid}.jpg",
+                    "RCLONE_CONFIG": f"rclone/{uid}.conf",
+                    "TOKEN_PICKLE": f"tokens/{uid}.pickle",
+                    "USER_COOKIE_FILE": f"cookies/{uid}/cookies.txt",
+                }
 
-    if await database.db.rss[BOT_ID].find_one():
-        rows = database.db.rss[BOT_ID].find({})
-        async for row in rows:
-            user_id = row["_id"]
-            del row["_id"]
-            rss_dict[user_id] = row
-        LOGGER.info("Rss data has been imported from Database.")
+                async def save_file(file_path, content):
+                    dir_path = ospath.dirname(file_path)
+                    if not await aiopath.exists(dir_path):
+                        await makedirs(dir_path)
+                    if file_path.startswith("cookies/") and file_path.endswith(".txt"):
+                        async with aiopen(file_path, "wb") as f:
+                            if isinstance(content, str):
+                                content = content.encode("utf-8")
+                            await f.write(content)
+                    else:
+                        async with aiopen(file_path, "wb+") as f:
+                            if isinstance(content, str):
+                                content = content.encode("utf-8")
+                            await f.write(content)
+
+                for key, path in paths.items():
+                    if row.get(key):
+                        await save_file(path, row[key])
+                        row[key] = path
+                user_data[uid] = row
+            LOGGER.info("Users Data has been imported from MongoDB")
+
+        if await database.db.rss[BOT_ID].find_one():
+            rows = database.db.rss[BOT_ID].find({})
+            async for row in rows:
+                user_id = row["_id"]
+                del row["_id"]
+                rss_dict[user_id] = row
+            LOGGER.info("RSS data has been imported from MongoDB")
 
 
 async def save_settings():
     if database.db is None:
         return
-    config_dict = Config.get_all()
-    await database.db.settings.config.replace_one(
-        {"_id": TgClient.ID}, config_dict, upsert=True
+    config_file = Config.get_all()
+    await database.db.settings.config.update_one(
+        {"_id": TgClient.ID}, {"$set": config_file}, upsert=True
     )
     if await database.db.settings.aria2c.find_one({"_id": TgClient.ID}) is None:
         await database.db.settings.aria2c.update_one(
@@ -199,6 +233,9 @@ async def update_variables():
         Config.LEECH_SPLIT_SIZE = TgClient.MAX_SPLIT_SIZE
 
     Config.HYBRID_LEECH = bool(Config.HYBRID_LEECH and TgClient.IS_PREMIUM_USER)
+    Config.USER_TRANSMISSION = bool(
+        Config.USER_TRANSMISSION and TgClient.IS_PREMIUM_USER
+    )
 
     if Config.AUTHORIZED_CHATS:
         aid = Config.AUTHORIZED_CHATS.split()
@@ -222,16 +259,25 @@ async def update_variables():
             x = x.lstrip(".")
             excluded_extensions.append(x.strip().lower())
 
-    if Config.INCLUDED_EXTENSIONS:
-        fx = Config.INCLUDED_EXTENSIONS.split()
-        for x in fx:
-            x = x.lstrip(".")
-            included_extensions.append(x.strip().lower())
-
     if Config.GDRIVE_ID:
         drives_names.append("Main")
         drives_ids.append(Config.GDRIVE_ID)
         index_urls.append(Config.INDEX_URL)
+
+    if not Config.IMDB_TEMPLATE:
+        Config.IMDB_TEMPLATE = """
+<b>Title: </b> {title} [{year}]
+<b>Also Known As:</b> {aka}
+<b>Rating ⭐️:</b> <i>{rating}</i>
+<b>Release Info: </b> <a href="{url_releaseinfo}">{release_date}</a>
+<b>Genre: </b>{genres}
+<b>IMDb URL:</b> {url}
+<b>Language: </b>{languages}
+<b>Country of Origin : </b> {countries}
+
+<b>Story Line: </b><code>{plot}</code>
+
+<a href="{url_cast}">Read More ...</a>"""
 
     if await aiopath.exists("list_drives.txt"):
         async with aiopen("list_drives.txt", "r+") as f:
@@ -245,23 +291,32 @@ async def update_variables():
                 else:
                     index_urls.append("")
 
+    if await aiopath.exists("shortener.txt"):
+        async with aiopen("shortener.txt", "r+") as f:
+            lines = await f.readlines()
+            for line in lines:
+                temp = line.strip().split()
+                if len(temp) == 2:
+                    shortener_dict[temp[0]] = temp[1]
+
 
 async def load_configurations():
-
     if not await aiopath.exists(".netrc"):
         async with aiopen(".netrc", "w"):
             pass
 
     await (
         await create_subprocess_shell(
-            "chmod 600 .netrc && cp .netrc /root/.netrc && chmod +x aria-nox-nzb.sh && ./aria-nox-nzb.sh"
+            f"chmod 600 .netrc && cp .netrc /root/.netrc && chmod +x setpkgs.sh && ./setpkgs.sh {BinConfig.ARIA2_NAME} {BinConfig.SABNZBD_NAME}"
         )
     ).wait()
 
-    if Config.BASE_URL:
+    PORT = getenv("PORT", "") or Config.BASE_URL_PORT
+    if PORT:
         await create_subprocess_shell(
-            f"gunicorn -k uvicorn.workers.UvicornWorker -w 1 web.wserver:app --bind 0.0.0.0:{Config.BASE_URL_PORT}"
+            f"gunicorn -k uvicorn.workers.UvicornWorker -w 1 web.wserver:app --bind 0.0.0.0:{PORT}"
         )
+        await create_subprocess_shell("python3 cron_boot.py")
 
     if await aiopath.exists("cfg.zip"):
         if await aiopath.exists("/JDownloader/cfg"):
@@ -283,3 +338,13 @@ async def load_configurations():
 
     if not await aiopath.exists("accounts"):
         Config.USE_SERVICE_ACCOUNTS = False
+
+    await TorrentManager.initiate()
+
+    if Config.DISABLE_TORRENTS:
+        LOGGER.info("Torrents are disabled. Skipping qBittorrent initialization.")
+    else:
+        try:
+            await TorrentManager.qbittorrent.app.set_preferences(qbit_options)
+        except Exception as e:
+            LOGGER.error(f"Failed to configure qBittorrent: {e}")

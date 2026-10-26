@@ -1,6 +1,4 @@
-from aiofiles import open as aiopen
-from aiofiles.os import path as aiopath, makedirs, listdir
-from asyncio import create_subprocess_exec, gather, wait_for
+from asyncio import create_subprocess_exec, gather, sleep, wait_for
 from asyncio.subprocess import PIPE
 from configparser import RawConfigParser
 from json import loads
@@ -8,11 +6,15 @@ from logging import getLogger
 from random import randrange
 from re import findall as re_findall
 
-from ....core.config_manager import Config
+from aiofiles import open as aiopen
+from aiofiles.os import listdir, makedirs, path as aiopath
+from contextlib import suppress
+
+from ....core.config_manager import Config, BinConfig
 from ...ext_utils.bot_utils import cmd_exec, sync_to_async
 from ...ext_utils.files_utils import (
-    get_mime_type,
     count_files_and_folders,
+    get_mime_type,
 )
 
 LOGGER = getLogger(__name__)
@@ -33,6 +35,7 @@ class RcloneTransferHelper:
         self._sa_index = 0
         self._sa_number = 0
         self._use_service_accounts = Config.USE_SERVICE_ACCOUNTS
+        self._rclone_select = False
 
     @property
     def transferred_size(self):
@@ -62,7 +65,7 @@ class RcloneTransferHelper:
         ):
             try:
                 data = await wait_for(self._proc.stdout.readline(), 60)
-            except:
+            except Exception:
                 break
             if not data:
                 break
@@ -78,6 +81,7 @@ class RcloneTransferHelper:
                     self._speed,
                     self._eta,
                 ) = data[0]
+            await sleep(0.05)
 
     def _switch_service_account(self):
         if self._sa_index == self._sa_number - 1:
@@ -198,7 +202,7 @@ class RcloneTransferHelper:
     async def _get_gdrive_link(self, config_path, destination, mime_type):
         epath = destination.rsplit("/", 1)[0] if mime_type == "Folder" else destination
         cmd = [
-            "rclone",
+            BinConfig.RCLONE_NAME,
             "lsjson",
             "--fast-list",
             "--no-mimetype",
@@ -265,8 +269,8 @@ class RcloneTransferHelper:
     async def upload(self, path):
         self._is_upload = True
         rc_path = self._listener.up_dest
-        if rc_path.startswith("mt:"):
-            rc_path = rc_path.split("mt:", 1)[1]
+        if rc_path.startswith("mrcc:"):
+            rc_path = rc_path.split("mrcc:", 1)[1]
             oconfig_path = f"rclone/{self._listener.user_id}.conf"
         else:
             oconfig_path = "rclone.conf"
@@ -336,7 +340,7 @@ class RcloneTransferHelper:
             link = await self._get_gdrive_link(oconfig_path, destination, mime_type)
         else:
             cmd = [
-                "rclone",
+                BinConfig.RCLONE_NAME,
                 "link",
                 "--config",
                 oconfig_path,
@@ -413,7 +417,7 @@ class RcloneTransferHelper:
                 )
             else:
                 cmd = [
-                    "rclone",
+                    BinConfig.RCLONE_NAME,
                     "link",
                     "--config",
                     config_path,
@@ -445,12 +449,13 @@ class RcloneTransferHelper:
         destination,
         method,
     ):
-        rclone_select = False
         if source.split(":")[-1].startswith("rclone_select"):
-            source = f"{source.split(":")[0]}:"
-            rclone_select = True
+            source = f"{source.split(':')[0]}:"
+            self._rclone_select = True
+        else:
+            ext = "*.{" + ",".join(self._listener.excluded_extensions) + "}"
         cmd = [
-            "rclone",
+            BinConfig.RCLONE_NAME,
             method,
             "--fast-list",
             "--config",
@@ -466,13 +471,9 @@ class RcloneTransferHelper:
             "1",
             "-M",
         ]
-        if rclone_select:
+        if self._rclone_select:
             cmd.extend(("--files-from", self._listener.link))
-        elif self._listener.included_extensions:
-            ext = "*.{" + ",".join(self._listener.included_extensions) + "}"
-            cmd.extend(("--include", ext))
         else:
-            ext = "*.{" + ",".join(self._listener.excluded_extensions) + "}"
             cmd.extend(("--exclude", ext))
         if rcflags := self._listener.rc_flags:
             rcflags = rcflags.split("|")
@@ -496,10 +497,8 @@ class RcloneTransferHelper:
     async def cancel_task(self):
         self._listener.is_cancelled = True
         if self._proc is not None:
-            try:
+            with suppress(Exception):
                 self._proc.kill()
-            except:
-                pass
         if self._is_download:
             LOGGER.info(f"Cancelling Download: {self._listener.name}")
             await self._listener.on_download_error("Stopped by user!")

@@ -1,9 +1,10 @@
 from asyncio import sleep
-from secrets import token_urlsafe
+from secrets import token_hex
 from telegraph.aio import Telegraph
 from telegraph.exceptions import RetryAfterError
 
 from ... import LOGGER
+from ...core.config_manager import Config
 
 
 class TelegraphHelper:
@@ -16,7 +17,7 @@ class TelegraphHelper:
         LOGGER.info("Creating Telegraph Account")
         try:
             await self._telegraph.create_account(
-                short_name=token_urlsafe(8),
+                short_name=token_hex(5),
                 author_name=self._author_name,
                 author_url=self._author_url,
             )
@@ -73,14 +74,12 @@ class TelegraphHelper:
                     nxt_page += 1
             await self.edit_page(
                 path=path[prev_page],
-                title="Mirror-leech-bot Torrent Search",
+                title="WZML-X Torrent Search",
                 content=content,
             )
         return
 
 
-telegraph = TelegraphHelper(
-    "Mirror-Leech-Telegram-Bot", "https://github.com/anasty17/mirror-leech-telegram-bot"
-)
+telegraph = TelegraphHelper(Config.AUTHOR_NAME, Config.AUTHOR_URL)
 
 print(__name__)

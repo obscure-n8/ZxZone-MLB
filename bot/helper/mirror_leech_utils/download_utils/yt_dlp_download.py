@@ -1,13 +1,18 @@
 from logging import getLogger
 from os import path as ospath, listdir
 from re import search as re_search
-from secrets import token_urlsafe
+from contextlib import suppress
+from secrets import token_hex
 from yt_dlp import YoutubeDL, DownloadError
 
-
 from .... import task_dict_lock, task_dict
+from ....core.config_manager import BinConfig
 from ...ext_utils.bot_utils import sync_to_async, async_to_sync
-from ...ext_utils.task_manager import check_running_tasks, stop_duplicate_check
+from ...ext_utils.task_manager import (
+    check_running_tasks,
+    stop_duplicate_check,
+    limit_checker,
+)
 from ...mirror_leech_utils.status_utils.queue_status import QueueStatus
 from ...telegram_helper.message_utils import send_status_message
 from ..status_utils.yt_dlp_status import YtDlpStatus
@@ -53,11 +58,11 @@ class YoutubeDLHelper:
         self._ext = ""
         self.is_playlist = False
         self.keep_thumb = False
+        self.playlist_count = 0
         self.opts = {
             "progress_hooks": [self._on_download_progress],
             "logger": MyLogger(self, self._listener),
             "usenetrc": True,
-            "cookiefile": "cookies.txt",
             "allow_multiple_video_streams": True,
             "allow_multiple_audio_streams": True,
             "noprogress": True,
@@ -65,6 +70,7 @@ class YoutubeDLHelper:
             "overwrites": True,
             "writethumbnail": True,
             "trim_file_name": 220,
+            "ffmpeg_location": f"/bin/{BinConfig.FFMPEG_NAME}",
             "fragment_retries": 10,
             "retries": 10,
             "retry_sleep_functions": {
@@ -74,6 +80,17 @@ class YoutubeDLHelper:
                 "extractor": lambda n: 3,
             },
         }
+        cookie_to_use = (
+            usr_cookie
+            if not self._listener.user_dict.get("USE_DEFAULT_COOKIE", False)
+            and (usr_cookie := self._listener.user_dict.get("USER_COOKIE_FILE", ""))
+            and ospath.exists(usr_cookie)
+            else "cookies.txt"
+        )
+        self.opts["cookiefile"] = cookie_to_use
+        LOGGER.info(
+            f"Using cookies.txt file: {cookie_to_use} | User ID : {self._listener.user_id}"
+        )
 
     @property
     def download_speed(self):
@@ -117,7 +134,7 @@ class YoutubeDLHelper:
                 self._eta = d.get("eta", "-") or "-"
             try:
                 self._progress = (self._downloaded_bytes / self._listener.size) * 100
-            except:
+            except ZeroDivisionError:
                 pass
 
     async def _on_download_start(self, from_queue=False):
@@ -134,7 +151,7 @@ class YoutubeDLHelper:
 
     def _extract_meta_data(self):
         if self._listener.link.startswith(("rtmp", "mms", "rstp", "rtmps")):
-            self.opts["external_downloader"] = "ffmpeg"
+            self.opts["external_downloader"] = BinConfig.FFMPEG_NAME
         with YoutubeDL(self.opts) as ydl:
             try:
                 result = ydl.extract_info(self._listener.link, download=False)
@@ -142,6 +159,8 @@ class YoutubeDLHelper:
                     raise ValueError("Info result is None")
             except Exception as e:
                 return self._on_download_error(str(e))
+            if self.is_playlist:
+                self.playlist_count = result.get("playlist_count", 0)
             if "entries" in result:
                 for entry in result["entries"]:
                     if not entry:
@@ -168,7 +187,7 @@ class YoutubeDLHelper:
                     self._ext = ext
 
     def _download(self, path):
-        try:
+        with suppress(Exception):
             with YoutubeDL(self.opts) as ydl:
                 try:
                     ydl.download([self._listener.link])
@@ -186,8 +205,6 @@ class YoutubeDLHelper:
             if self._listener.is_cancelled:
                 return
             async_to_sync(self._listener.on_download_complete)
-        except:
-            pass
         return
 
     async def add_download(self, path, qual, playlist, options):
@@ -195,7 +212,7 @@ class YoutubeDLHelper:
             self.opts["ignoreerrors"] = True
             self.is_playlist = True
 
-        self._gid = token_urlsafe(10)
+        self._gid = token_hex(5)
 
         await self._on_download_start()
 
@@ -252,8 +269,8 @@ class YoutubeDLHelper:
         start_path = path if self.keep_thumb else f"{path}/yt-dlp-thumb"
         if self.is_playlist:
             self.opts["outtmpl"] = {
-                "default": f"{path}/{self._listener.name}/%(playlist_index)03d - %(title,fulltitle,alt_title)s%(season_number& |)s%(season_number&S|)s%(season_number|)02d%(episode_number&E|)s%(episode_number|)02d%(height& |)s%(height|)s%(height&p|)s%(fps|)s%(fps&fps|)s%(tbr& |)s%(tbr|)d.%(ext)s",
-                "thumbnail": f"{start_path}/%(playlist_index)03d - %(title,fulltitle,alt_title)s%(season_number& |)s%(season_number&S|)s%(season_number|)02d%(episode_number&E|)s%(episode_number|)02d%(height& |)s%(height|)s%(height&p|)s%(fps|)s%(fps&fps|)s%(tbr& |)s%(tbr|)d.%(ext)s",
+                "default": f"{path}/{self._listener.name}/%(title,fulltitle,alt_title)s%(season_number& |)s%(season_number&S|)s%(season_number|)02d%(episode_number&E|)s%(episode_number|)02d%(height& |)s%(height|)s%(height&p|)s%(fps|)s%(fps&fps|)s%(tbr& |)s%(tbr|)d.%(ext)s",
+                "thumbnail": f"{start_path}/%(title,fulltitle,alt_title)s%(season_number& |)s%(season_number&S|)s%(season_number|)02d%(episode_number&E|)s%(episode_number|)02d%(height& |)s%(height|)s%(height&p|)s%(fps|)s%(fps&fps|)s%(tbr& |)s%(tbr|)d.%(ext)s",
             }
         elif "download_ranges" in options:
             self.opts["outtmpl"] = {
@@ -317,6 +334,10 @@ class YoutubeDLHelper:
         msg, button = await stop_duplicate_check(self._listener)
         if msg:
             await self._listener.on_download_error(msg, button)
+            return
+
+        if limit_exceeded := await limit_checker(self._listener, self.playlist_count):
+            await self._listener.on_download_error(limit_exceeded, is_limit=True)
             return
 
         add_to_queue, event = await check_running_tasks(self._listener)

@@ -3,7 +3,7 @@ from aiofiles.os import path as aiopath
 from asyncio import create_subprocess_exec
 from configparser import RawConfigParser
 
-from ....core.config_manager import Config
+from ....core.config_manager import Config, BinConfig
 
 RcloneServe = []
 
@@ -14,7 +14,7 @@ async def rclone_serve_booter():
             try:
                 RcloneServe[0].kill()
                 RcloneServe.clear()
-            except:
+            except Exception:
                 pass
         return
     config = RawConfigParser()
@@ -32,10 +32,10 @@ async def rclone_serve_booter():
         try:
             RcloneServe[0].kill()
             RcloneServe.clear()
-        except:
+        except Exception:
             pass
     cmd = [
-        "rclone",
+        BinConfig.RCLONE_NAME,
         "serve",
         "http",
         "--config",

@@ -7,7 +7,6 @@ from os import path as ospath, listdir
 from pickle import load as pload
 from random import randrange
 from re import search as re_search
-from time import time
 from urllib.parse import parse_qs, urlparse
 from tenacity import (
     retry,
@@ -46,20 +45,21 @@ class GoogleDriveHelper:
         self.proc_bytes = 0
         self.total_time = 0
         self.status = None
+        self.update_interval = 3
         self.use_sa = Config.USE_SERVICE_ACCOUNTS
 
     @property
     def speed(self):
         try:
             return self.proc_bytes / self.total_time
-        except:
+        except Exception:
             return 0
 
     @property
     def processed_bytes(self):
         return self.proc_bytes
 
-    def progress(self):
+    async def progress(self):
         if self.status is not None:
             chunk_size = (
                 self.status.total_size * self.status.progress()
@@ -67,7 +67,7 @@ class GoogleDriveHelper:
             )
             self.file_processed_bytes = self.status.total_size * self.status.progress()
             self.proc_bytes += chunk_size
-        self.total_time = time() - self._start_time
+            self.total_time += self.update_interval
 
     def authorize(self):
         credentials = None
@@ -99,10 +99,10 @@ class GoogleDriveHelper:
         self.service = self.authorize()
 
     def get_id_from_url(self, link, user_id=""):
-        if user_id and link.startswith("mt:"):
+        if user_id and link.startswith("mtp:"):
             self.use_sa = False
             self.token_path = f"tokens/{user_id}.pickle"
-            link = link.replace("mt:", "", 1)
+            link = link.replace("mtp:", "", 1)
         elif link.startswith("sa:"):
             self.use_sa = True
             link = link.replace("sa:", "", 1)
@@ -111,15 +111,14 @@ class GoogleDriveHelper:
             link = link.replace("tp:", "", 1)
         if is_gdrive_id(link):
             return link
-        if match := re_search(r"/d/([-\w]+)", link):
-            return match.group(1)
-        if match := re_search(r"/folders/([-\w]+)", link):
-            return match.group(1)
+        if "folders" in link or "file" in link:
+            regex = r"https:\/\/drive\.google\.com\/(?:drive(.*?)\/folders\/|file(.*?)?\/d\/)([-\w]+)"
+            res = re_search(regex, link)
+            if res is None:
+                raise IndexError("G-Drive ID not found.")
+            return res.group(3)
         parsed = urlparse(link)
-        qs = parse_qs(parsed.query)
-        if "id" in qs:
-            return qs["id"][0]
-        raise IndexError("G-Drive ID not found.")
+        return parse_qs(parsed.query)["id"][0]
 
     @retry(
         wait=wait_exponential(multiplier=2, min=3, max=6),
@@ -211,7 +210,7 @@ class GoogleDriveHelper:
         file_id = file.get("id")
         if not Config.IS_TEAM_DRIVE:
             self.set_permission(file_id)
-        LOGGER.info(f'Created G-Drive Folder:\nName: {file.get("name")}\nID: {file_id}')
+        LOGGER.info(f"Created G-Drive Folder:\nName: {file.get('name')}\nID: {file_id}")
         return file_id
 
     def escapes(self, estr):
@@ -219,26 +218,6 @@ class GoogleDriveHelper:
         for char in chars:
             estr = estr.replace(char, f"\\{char}")
         return estr.strip()
-
-    """
-    def get_recursive_list(self, file, rootId):
-        rtnlist = []
-        if not rootId:
-            rootId = file.get('teamDriveId')
-        if rootId == "root":
-            rootId = self.service.files().get(
-                fileId='root', fields='id').execute().get('id')
-        x = file.get("name")
-        y = file.get("id")
-        while (y != rootId):
-            rtnlist.append(x)
-            file = self.service.files().get(fileId=file.get("parents")[0], supportsAllDrives=True,
-                                            fields='id, name, parents').execute()
-            x = file.get("name")
-            y = file.get("id")
-        rtnlist.reverse()
-        return rtnlist
-    """
 
     async def cancel_task(self):
         self.listener.is_cancelled = True

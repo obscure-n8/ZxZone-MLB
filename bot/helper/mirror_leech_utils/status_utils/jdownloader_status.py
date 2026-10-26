@@ -4,6 +4,7 @@ from .... import LOGGER, jd_listener_lock, jd_downloads
 from ....core.jdownloader_booter import jdownloader
 from ...ext_utils.status_utils import (
     MirrorStatus,
+    EngineStatus,
     get_readable_file_size,
     get_readable_time,
 )
@@ -30,7 +31,7 @@ def _get_combined_info(result, old_info):
                 time() - old_info.get("last_update", 0)
             )
         eta = (bytesTotal - bytesLoaded) / speed
-    except:
+    except Exception:
         eta = 0
     return {
         "name": name,
@@ -63,7 +64,7 @@ async def get_download(gid, old_info):
             ]
         )
         return _get_combined_info(result, old_info) if len(result) > 1 else result[0]
-    except:
+    except Exception:
         return old_info
 
 
@@ -72,7 +73,7 @@ class JDownloaderStatus:
         self.listener = listener
         self._gid = gid
         self._info = {}
-        self.tool = "jdownloader"
+        self.engine = EngineStatus().STATUS_JD
 
     async def _update(self):
         self._info = await get_download(self._gid, self._info)
@@ -80,7 +81,7 @@ class JDownloaderStatus:
     def progress(self):
         try:
             return f"{round((self._info.get('bytesLoaded', 0) / self._info.get('bytesTotal', 0)) * 100, 2)}%"
-        except:
+        except ZeroDivisionError:
             return "0%"
 
     def processed_bytes(self):
@@ -90,11 +91,7 @@ class JDownloaderStatus:
         return f"{get_readable_file_size(self._info.get('speed', 0))}/s"
 
     def name(self):
-        return (
-            self._info.get("name").strip("/").split("/")[0]
-            if self._info.get("name")
-            else self.listener.name
-        )
+        return self._info.get("name") or self.listener.name
 
     def size(self):
         return get_readable_file_size(self._info.get("bytesTotal", 0))

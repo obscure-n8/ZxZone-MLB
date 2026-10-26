@@ -3,6 +3,7 @@ from time import time
 from .... import LOGGER
 from ....core.torrent_manager import TorrentManager, aria2_name
 from ...ext_utils.status_utils import (
+    EngineStatus,
     MirrorStatus,
     get_readable_time,
     get_readable_file_size,
@@ -26,7 +27,7 @@ class Aria2Status:
         self.queued = queued
         self.start_time = 0
         self.seeding = seeding
-        self.tool = "aria2"
+        self.engine = EngineStatus().STATUS_ARIA2
 
     async def update(self):
         self._download = await get_download(self._gid, self._download)
@@ -37,7 +38,7 @@ class Aria2Status:
     def progress(self):
         try:
             return f"{round(int(self._download.get("completedLength", "0")) / int(self._download.get("totalLength", "0")) * 100, 2)}%"
-        except:
+        except ZeroDivisionError:
             return "0%"
 
     def processed_bytes(self):
@@ -63,7 +64,7 @@ class Aria2Status:
                 )
                 / int(self._download.get("downloadSpeed", "0"))
             )
-        except:
+        except ZeroDivisionError:
             return "-"
 
     async def status(self):
@@ -101,7 +102,7 @@ class Aria2Status:
                 / int(self._download.get("completedLength", "0")),
                 3,
             )
-        except:
+        except ZeroDivisionError:
             return 0
 
     def seeding_time(self):

@@ -1,6 +1,4 @@
-from ..telegram_helper.bot_commands import BotCommands
-from ...core.telegram_manager import TgClient
-
+# ruff: noqa: F403, F405
 mirror = """<b>Send link along with command line or </b>
 
 /cmd link
@@ -20,36 +18,6 @@ yt = """<b>Send link along with command line</b>:
 
 Check here all supported <a href='https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md'>SITES</a>
 Check all yt-dlp api options from this <a href='https://github.com/yt-dlp/yt-dlp/blob/master/yt_dlp/YoutubeDL.py#L212'>FILE</a> or use this <a href='https://t.me/mltb_official_channel/177'>script</a> to convert cli arguments to api options."""
-
-gdl = """<b>Send link along with command line</b>:
-
-/cmd link
-<b>By replying to link</b>:
-/cmd -n new name -z password -opt {"key": "value"}
-
-Check here all supported <a href='https://github.com/mikf/gallery-dl/blob/master/docs/supportedsites.md'>SITES</a>
-Check gallery-dl configuration options from this <a href='https://github.com/mikf/gallery-dl/blob/master/docs/configuration.rst'>FILE</a>."""
-
-gdl_opt = """<b>Options</b>: -opt
-
-/cmd link -opt {"cookies": "cookies.txt", "proxy": "http://proxy:8080", "postprocessors": [{"name": "ugoira", "extension": "webm", "ffmpeg-args": ["-c:v", "libvpx-vp9"]}], "image-range": "1-50", "extractor": {"pixiv": {"username": "user", "password": "pass"}, "twitter": {"cookies": {"auth_token": "abc"}}}}
-
-Supported options include:
-- <b>cookies</b>: path to cookies file or dict of site cookies
-- <b>proxy</b>: proxy URL
-- <b>username/password</b>: authentication credentials (dict with site keys)
-- <b>api-key</b>: API keys for sites (dict with site keys)
-- <b>oauth</b>: OAuth tokens (dict with site keys)
-- <b>extractor</b>: site-specific extractor options (dict)
-- <b>downloader</b>: downloader options (dict)
-- <b>postprocessors</b>: list of post-processor configs (e.g. ugoira)
-- <b>image-range/chapter-range</b>: download range filter
-- <b>image-filter/chapter-filter</b>: filter expression
-- <b>filename</b>: custom filename format
-- <b>directory</b>: custom directory format
-- <b>archive</b>: path to archive DB to skip duplicates
-- <b>sleep/sleep-request</b>: delay between requests
-- <b>config-files</b>: path(s) to gallery-dl JSON config files"""
 
 clone = """Send Gdrive|Gdot|Filepress|Filebee|Appdrive|Gdflix link or rclone path along with command or by replying to the link/rc_path by command.
 Use -sync to use sync method in rclone. Example: /cmd rcl/rclone_path -up rcl/rclone_path/rc -sync"""
@@ -87,7 +55,8 @@ link6 will get uploaded normally alone
 
 thumb = """<b>Thumbnail for current task</b>: -t
 
-/cmd link -t tg-message-link (doc or photo) or none (file without thumb)"""
+/cmd link -t image-url or tg-message-link (doc or photo) or none (file without thumb)
+Supports any direct image URL (jpg, png, webp, etc.) or a Telegram message link containing a photo/document."""
 
 split_size = """<b>Split size for current task</b>: -sp
 
@@ -96,16 +65,13 @@ Note: Only mb and gb are supported or write in bytes without unit!"""
 
 upload = """<b>Upload Destination</b>: -up
 
-/cmd link -up rc/gd/rcl/gdl/bh/gf (rcl: to select rclone config, remote & path | gdl: To select token.pickle, gdrive id | gf: upload to GoFile) using buttons
+/cmd link -up rcl/gdl (rcl: to select rclone config, remote & path | gdl: To select token.pickle, gdrive id) using buttons
 You can directly add the upload path: -up remote:dir/subdir or -up Gdrive_id or -up id/username (telegram) or -up id/username|topic_id (telegram)
 If DEFAULT_UPLOAD is `rc` then you can pass up: `gd` to upload using gdrive tools to GDRIVE_ID.
 If DEFAULT_UPLOAD is `gd` then you can pass up: `rc` to upload to RCLONE_PATH.
-If DEFAULT_UPLOAD is `bh` or `gf` then you can pass up: `rc` to upload to RCLONE_PATH.
-If DEFAULT_UPLOAD is `gd` then you can pass up: `bh` to upload to BUZZHEAVIER or `gf` to upload to GoFile.
-GoFile uses GOFILE_API_KEY when configured; otherwise guest upload is used.
 
-If you want to add path or gdrive manually from your config/token (UPLOADED FROM USETTING) add mt: for rclone and mt: before the path/gdrive_id without space.
-/cmd link -up mt:main:dump or -up mt:gdrive_id or -up mt:bh:folder_id <strong>OR you can simply edit upload using owner/user|token/config from usetting without adding mt: before the upload path/id</strong>
+If you want to add path or gdrive manually from your config/token (UPLOADED FROM USETTING) add mrcc: for rclone and mtp: before the path/gdrive_id without space.
+/cmd link -up mrcc:main:dump or -up mtp:gdrive_id <strong>or you can simply edit upload using owner/user token/config from usetting without adding mtp: or mrcc: before the upload path/id</strong>
 
 To add leech destination:
 -up id/@username/pm
@@ -115,7 +81,7 @@ when you should use b:(leech by bot)? When your default settings is leech by use
 -up h:id/@username(hybrid leech) h: to upload files by bot and user based on file size.
 -up id/@username|topic_id(leech in specific chat and topic) add | without space and write topic id after chat id or username.
 
-In case you want to specify whether using token.pickle or service accounts you can add tp:gdrive_id (using token.pickle) or sa:gdrive_id (using service accounts) or mt:gdrive_id (using token.pickle uploaded from usetting).
+In case you want to specify whether using token.pickle or service accounts you can add tp:gdrive_id (using token.pickle) or sa:gdrive_id (using service accounts) or mtp:gdrive_id (using token.pickle uploaded from usetting).
 DEFAULT_UPLOAD doesn't affect on leech cmds.
 """
 
@@ -125,9 +91,9 @@ user_download = """<b>User Download</b>: link
 /cmd sa:link to download using service account incase service account disabled.
 /cmd tp:gdrive_id to download using token.pickle and file_id incase service account enabled.
 /cmd sa:gdrive_id to download using service account and file_id incase service account disabled.
-/cmd mt:gdrive_id or mt:link to download using user token.pickle uploaded from usetting
-/cmd mt:remote:path to download using user rclone config uploaded from usetting
-you can simply edit upload using owner/user token/config from usetting without adding mt: before the path/id"""
+/cmd mtp:gdrive_id or mtp:link to download using user token.pickle uploaded from usetting
+/cmd mrcc:remote:path to download using user rclone config uploaded from usetting
+you can simply edit upload using owner/user token/config from usetting without adding mtp: or mrcc: before the path/id"""
 
 rcf = """<b>Rclone Flags</b>: -rcf
 
@@ -155,9 +121,9 @@ rlone_dl = """<b>Rclone Download</b>:
 Treat rclone paths exactly like links
 /cmd main:dump/ubuntu.iso or rcl(To select config, remote and path)
 Users can add their own rclone from user settings
-If you want to add path manually from your config add mt: before the path without space
-/cmd mt:main:dump/ubuntu.iso
-You can simply edit using owner/user config from usetting without adding mt: before the path"""
+If you want to add path manually from your config add mrcc: before the path without space
+/cmd mrcc:main:dump/ubuntu.iso
+You can simply edit using owner/user config from usetting without adding mrcc: before the path"""
 
 extract_zip = """<b>Extract/Zip</b>: -e -z
 
@@ -238,17 +204,17 @@ If DEFAULT_UPLOAD is `rc` then you can pass up: `gd` to upload using gdrive tool
 /cmd gdriveLink or gdl or gdriveId -up gdl or gdriveId or gd
 /cmd tp:gdriveLink or tp:gdriveId -up tp:gdriveId or gdl or gd (to use token.pickle if service account enabled)
 /cmd sa:gdriveLink or sa:gdriveId -p sa:gdriveId or gdl or gd (to use service account if service account disabled)
-/cmd mt:gdriveLink or mt:gdriveId -up mt:gdriveId or gdl or gd(if you have added upload gdriveId from usetting) (to use user token.pickle that uploaded by usetting)
-You can simply edit using owner/user token from usetting without adding mt: before the id"""
+/cmd mtp:gdriveLink or mtp:gdriveId -up mtp:gdriveId or gdl or gd(if you have added upload gdriveId from usetting) (to use user token.pickle that uploaded by usetting)
+You can simply edit using owner/user token from usetting without adding mtp: before the id"""
 
 rclone_cl = """<b>Rclone</b>: path
 If DEFAULT_UPLOAD is `gd` then you can pass up: `rc` to upload to RCLONE_PATH.
 /cmd rcl/rclone_path -up rcl/rclone_path/rc -rcf flagkey:flagvalue|flagkey|flagkey:flagvalue
 /cmd rcl or rclone_path -up rclone_path or rc or rcl
-/cmd mt:rclone_path -up rcl or rc(if you have add rclone path from usetting) (to use user config)
-You can simply edit using owner/user config from usetting without adding mt: before the path"""
+/cmd mrcc:rclone_path -up rcl or rc(if you have add rclone path from usetting) (to use user config)
+You can simply edit using owner/user config from usetting without adding mrcc: before the path"""
 
-name_sub = r"""<b>Name Substitution</b>: -ns
+name_swap = r"""<b>Name Substitution</b>: -ns
 /cmd link -ns script/code/s | mirror/leech | tea/ /s | clone | cpu/ | \[mltb\]/mltb | \\text\\/text/s
 This will affect on all files. Format: wordToReplace/wordToReplaceWith/sensitiveCase
 Word Subtitions. You can add pattern instead of normal text. Timeout: 60 sec
@@ -279,38 +245,44 @@ list of lists of ffmpeg commands. You can set multiple ffmpeg commands for all f
 Notes:
 1. Add <code>-del</code> to the list(s) which you want from the bot to delete the original files after command run complete!
 3. To execute one of pre-added lists in bot like: ({"subtitle": ["-i mltb.mkv -c copy -c:s srt mltb.mkv"]}), you must use -ff subtitle (list key)
-Examples: ["-i mltb.mkv -c copy -c:s srt mltb.mkv", "-i mltb.video -c copy -c:s srt mltb", "-i mltb.m4a -c:a libmp3lame -q:a 2 mltb.mp3", "-i mltb.audio -c:a libmp3lame -q:a 2 mltb.mp3", "-i mltb -map 0:a -c copy mltb.mka -map 0:s -c copy mltb.srt", "-i mltb -i tg://openmessage?user_id=5272663208&message_id=322801 -filter_complex 'overlay=W-w-10:H-h-10' -c:a copy mltb"]
+Examples: ["-i mltb.mkv -c copy -c:s srt mltb.mkv", "-i mltb.video -c copy -c:s srt mltb", "-i mltb.m4a -c:a libmp3lame -q:a 2 mltb.mp3", "-i mltb.audio -c:a libmp3lame -q:a 2 mltb.mp3", "-i mltb -map 0:a -c copy mltb.mka -map 0:s -c copy mltb.srt"]
 Here I will explain how to use mltb.* which is reference to files you want to work on.
 1. First cmd: the input is mltb.mkv so this cmd will work only on mkv videos and the output is mltb.mkv also so all outputs is mkv. -del will delete the original media after complete run of the cmd.
-2. Second cmd: the input is mltb.video so this cmd will work on all videos and the output is only mltb so the extension is same as input files.
+2. Second cmd: the input is mltb.video so this cmd will work on all videos and the output is only mltb so the extenstion is same as input files.
 3. Third cmd: the input in mltb.m4a so this cmd will work only on m4a audios and the output is mltb.mp3 so the output extension is mp3.
-4. Fourth cmd: the input is mltb.audio so this cmd will work on all audios and the output is mltb.mp3 so the output extension is mp3.
-5. Fifth cmd: You can add telegram link for small size input like photo to set watermark"""
+4. Fourth cmd: the input is mltb.audio so this cmd will work on all audios and the output is mltb.mp3 so the output extension is mp3."""
 
-alldebrid_arg = """<b>AllDebrid Unlock</b>: -ad
+metadata = """<b>Metadata</b>: -meta
 
-/cmd link -ad
-Resolves filehost links (1fichier, rapidgator, mega, etc.) via the
-AllDebrid API before handing off to the existing direct downloader.
+Apply custom metadata to media files using pipe (|) separator.
 
-Magnet/torrent inputs are also routed through AllDebrid when ``-ad``
-is set: the bot uploads the magnet (or replied <code>.torrent</code>
-file), waits for AllDebrid to finish torrenting, then downloads each
-file directly from AllDebrid CDNs. This bypasses aria2/qBittorrent
-entirely so dead torrents finish faster on a debrid plan.
+<b>Format:</b> key=value|key2=value2|key3=value3
 
-Requires <code>ALLDEBRID_API_KEY</code> in the bot configuration."""
+<b>Dynamic Variables:</b>
+• <code>{filename}</code> - Original filename
+• <code>{basename}</code> - Filename without extension  
+• <code>{extension}</code> - File extension
+• <code>{audiolang}</code> - Audio language (auto-detected or English)
+• <code>{sublang}</code> - Subtitle language (auto-detected or none)
+• <code>{year}</code> - Year extracted from filename
 
-torbox_arg = """<b>TorBox Unlock</b>: -tb
+<b>Per-Stream Metadata:</b>
+Set different metadata for audio/video/subtitle streams in User Settings > FFmpeg Settings:
+• <b>Audio Metadata:</b> Applied to each audio stream
+• <b>Video Metadata:</b> Applied to video streams  
+• <b>Subtitle Metadata:</b> Applied to subtitle streams
 
-/cmd link -tb
-Routes normal web/filehost links through TorBox WebDL.
+<b>Examples:</b>
+<code>/mirror link -meta title=My Movie|artist={audiolang} Version</code>
+<code>/yt link -meta album={basename}|year={year}|genre=Action</code>
 
-Magnet/torrent inputs are also routed through TorBox when <code>-tb</code>
-is set: the bot uploads the magnet or replied <code>.torrent</code>,
-waits for TorBox to finish/cache it, then downloads each file from TorBox CDN links.
+<b>Escape Pipes:</b> Use <code>\\|</code> to include literal pipe in values:
+<code>title=Movie \\| Director's Cut</code>
 
-Requires <code>TORBOX_API_KEY</code> in bot configuration."""
+<b>User Settings Example:</b>
+• Audio Metadata: <code>language={audiolang}|title=Audio Track</code>
+• Video Metadata: <code>title={basename}|year={year}</code>
+• Subtitle Metadata: <code>language={sublang}|title=Subtitles</code>"""
 
 YT_HELP_DICT = {
     "main": yt,
@@ -329,41 +301,19 @@ YT_HELP_DICT = {
     "Screenshot": screenshot,
     "Convert-Media": convert_media,
     "Force-Start": force_start,
-    "Name-Substitute": name_sub,
+    "Name-Swap": name_swap,
     "TG-Transmission": transmission,
     "Thumb-Layout": thumbnail_layout,
     "Leech-Type": leech_as,
     "FFmpeg-Cmds": ffmpeg_cmds,
-}
-
-GDL_HELP_DICT = {
-    "main": gdl,
-    "New-Name": f"{new_name}\nNote: Don't add file extension",
-    "Zip": zip_arg,
-    "Options": gdl_opt,
-    "Multi-Link": multi_link,
-    "Same-Directory": same_dir,
-    "Thumb": thumb,
-    "Split-Size": split_size,
-    "Upload-Destination": upload,
-    "Rclone-Flags": rcf,
-    "Bulk": bulk,
-    "Sample-Video": sample_video,
-    "Screenshot": screenshot,
-    "Convert-Media": convert_media,
-    "Force-Start": force_start,
-    "Name-Substitute": name_sub,
-    "TG-Transmission": transmission,
-    "Thumb-Layout": thumbnail_layout,
-    "Leech-Type": leech_as,
-    "FFmpeg-Cmds": ffmpeg_cmds,
+    "Metadata": metadata,
 }
 
 MIRROR_HELP_DICT = {
     "main": mirror,
     "New-Name": new_name,
     "DL-Auth": "<b>Direct link authorization</b>: -au -ap\n\n/cmd link -au username -ap password",
-    "Headers": "<b>Direct link custom headers</b>: -h\n\n/cmd link -h key:value|key1:value1",
+    "Headers": "<b>Direct link custom headers</b>: -h\n\n/cmd link -h key: value key1: value1",
     "Extract/Zip": extract_zip,
     "Select-Files": "<b>Bittorrent/JDownloader/Sabnzbd File Selection</b>: -s\n\n/cmd link -s or by replying to file/link",
     "Torrent-Seed": seed,
@@ -382,13 +332,12 @@ MIRROR_HELP_DICT = {
     "Convert-Media": convert_media,
     "Force-Start": force_start,
     "User-Download": user_download,
-    "Name-Substitute": name_sub,
+    "Name-Swap": name_swap,
     "TG-Transmission": transmission,
     "Thumb-Layout": thumbnail_layout,
     "Leech-Type": leech_as,
     "FFmpeg-Cmds": ffmpeg_cmds,
-    "AllDebrid": alldebrid_arg,
-    "TorBox": torbox_arg,
+    "Metadata": metadata,
 }
 
 CLONE_HELP_DICT = {
@@ -405,7 +354,7 @@ Title1 link (required)
 Title2 link -c cmd -inf xx -exf xx
 Title3 link -c cmd -d ratio:time -z password
 
--c command -up mt:remote:path/subdir -rcf --buffer-size:8M|key|key:value
+-c command -up mrcc:remote:path/subdir -rcf --buffer-size:8M|key|key:value
 -inf For included words filter.
 -exf For excluded words filter.
 -stv true or false (sensitive filter)
@@ -430,95 +379,174 @@ PASSWORD_ERROR_MESSAGE = """
 <b>Example:</b> link::my password
 """
 
-user_settings_text = {
-    "LEECH_SPLIT_SIZE": f"Send Leech split size in bytes or use gb or mb. Example: 40000000 or 2.5gb or 1000mb. IS_PREMIUM_USER: {TgClient.IS_PREMIUM_USER}. Timeout: 60 sec",
-    "LEECH_DUMP_CHAT": """Send leech destination ID/USERNAME/PM.
-* b:id/@username/pm (b: means leech by bot) (id or username of the chat or write pm means private message so bot will send the files in private to you) when you should use b:(leech by bot)? When your default settings is leech by user and you want to leech by bot for specific task.
-* u:id/@username(u: means leech by user) This incase OWNER added USER_STRING_SESSION.
-* h:id/@username(hybrid leech) h: to upload files by bot and user based on file size.
-* id/@username|topic_id(leech in specific chat and topic) add | without space and write topic id after chat id or username. Timeout: 60 sec""",
-    "LEECH_FILENAME_PREFIX": r"Send Leech Filename Prefix. You can add HTML tags. Example: <code>@mychannel</code>. Timeout: 60 sec",
-    "THUMBNAIL_LAYOUT": "Send thumbnail layout (widthxheight, 2x2, 3x3, 2x4, 4x4, ...). Example: 3x3. Timeout: 60 sec",
-    "RCLONE_PATH": "Send Rclone Path. If you want to use your rclone config edit using owner/user config from usetting or add mt: before rclone path. Example mt:remote:folder. Timeout: 60 sec",
-    "RCLONE_FLAGS": "key:value|key|key|key:value . Check here all <a href='https://rclone.org/flags/'>RcloneFlags</a>\nEx: --buffer-size:8M|--drive-starred-only",
-    "GDRIVE_ID": "Send Gdrive ID. If you want to use your token.pickle edit using owner/user token from usetting or add mt: before the id. Example: mt:F435RGGRDXXXXXX . Timeout: 60 sec",
-    "INDEX_URL": "Send Index URL. Timeout: 60 sec",
-    "UPLOAD_PATHS": "Send Dict of keys that have path values. Example: {'path 1': 'remote:rclonefolder', 'path 2': 'gdrive1 id', 'path 3': 'tg chat id', 'path 4': 'mt:remote:', 'path 5': b:@username} . Timeout: 60 sec",
-    "EXCLUDED_EXTENSIONS": "Send excluded extensions separated by space without dot at beginning. Timeout: 60 sec",
-    "INCLUDED_EXTENSIONS": "Send included extensions separated by space without dot at beginning. Timeout: 60 sec",
-    "NAME_SUBSTITUTE": r"""Word Subtitions. You can add pattern instead of normal text. Timeout: 60 sec
-NOTE: You must add \ before any character, those are the characters: \^$.|?*+()[]{}-
-Example: script/code/s | mirror/leech | tea/ /s | clone | cpu/ | \[mltb\]/mltb | \\text\\/text/s
-1. script will get replaced by code with sensitive case
-2. mirror will get replaced by leech
-4. tea will get replaced by space with sensitive case
-5. clone will get removed
-6. cpu will get replaced by space
-7. [mltb] will get replaced by mltb
-8. \text\ will get replaced by text with sensitive case
-""",
-    "YT_DLP_OPTIONS": """Send dict of YT-DLP Options. Timeout: 60 sec
-Format: {key: value, key: value, key: value}.
-Example: {"format": "bv*+mergeall[vcodec=none]", "nocheckcertificate": True, "playliststart": 10, "fragment_retries": float("inf"), "matchtitle": "S13", "writesubtitles": True, "live_from_start": True, "postprocessor_args": {"ffmpeg": ["-threads", "4"]}, "wait_for_video": (5, 100), "download_ranges": [{"start_time": 0, "end_time": 10}]}
-Check all yt-dlp api options from this <a href='https://github.com/yt-dlp/yt-dlp/blob/master/yt_dlp/YoutubeDL.py#L184'>FILE</a> or use this <a href='https://t.me/mltb_official_channel/177'>script</a> to convert cli arguments to api options.""",
-    "FFMPEG_CMDS": """Dict of list values of ffmpeg commands. You can set multiple ffmpeg commands for all files before upload. Don't write ffmpeg at beginning, start directly with the arguments.
-Examples: {"subtitle": ["-i mltb.mkv -c copy -c:s srt mltb.mkv", "-i mltb.video -c copy -c:s srt mltb"], "convert": ["-i mltb.m4a -c:a libmp3lame -q:a 2 mltb.mp3", "-i mltb.audio -c:a libmp3lame -q:a 2 mltb.mp3"], "extract": ["-i mltb -map 0:a -c copy mltb.mka -map 0:s -c copy mltb.srt"], "metadata": ["-i mltb.mkv -map 0 -map -0:v:1 -map -0:s -map 0:s:0 -map -0:v:m:attachment -c copy -metadata:s:v:0 title={title} -metadata:s:a:0 title={title} -metadata:s:a:1 title={title2} -metadata:s:a:2 title={title2} -c:s srt -metadata:s:s:0 title={title3} mltb -y -del"], "watermark": ["-i mltb -i tg://openmessage?user_id=5272663208&message_id=322801 -filter_complex 'overlay=W-w-10:H-h-10' -c:a copy mltb"]}
-Notes:
-- Add `-del` to the list which you want from the bot to delete the original files after command run complete!
-- To execute one of those lists in bot for example, you must use -ff subtitle (list key) or -ff convert (list key)
-Here I will explain how to use mltb.* which is reference to files you want to work on.
-1. First cmd: the input is mltb.mkv so this cmd will work only on mkv videos and the output is mltb.mkv also so all outputs is mkv. -del will delete the original media after complete run of the cmd.
-2. Second cmd: the input is mltb.video so this cmd will work on all videos and the output is only mltb so the extension is same as input files.
-3. Third cmd: the input in mltb.m4a so this cmd will work only on m4a audios and the output is mltb.mp3 so the output extension is mp3.
-4. Fourth cmd: the input is mltb.audio so this cmd will work on all audios and the output is mltb.mp3 so the output extension is mp3.
-5. FFmpeg Variables in last cmd which is metadata ({title}, {title2}, etc...), you can edit them in usetting
-6. Telegram link for small size inputs like photo to set watermark.""",
-    "GALLERY_DL_OPTIONS": """Send dict of Gallery-DL Options. Timeout: 60 sec
-Format: {key: value, key: value, key: value}.
-Example: {"cookies": "cookies.txt", "proxy": "http://proxy:8080", "image-range": "1-50", "extractor": {"pixiv": {"username": "user", "password": "pass"}}}
-Check gallery-dl configuration options from this <a href='https://github.com/mikf/gallery-dl/blob/master/docs/configuration.rst'>FILE</a>.""",
-    "CLONE_DUMP_CHATS": "Send List/Int/Str Chat_id/username|thread_id. Example: -100xxxx555|5 or @dumpchat|8 or @mltb_dump or pm or List like: [-100xxx885552|6, '@username', 65585541254, 'pm']",
-}
+
+def get_bot_commands():
+    from ...core.plugin_manager import get_plugin_manager
+
+    static_commands = {
+        "Mirror": "[link/file] Mirror to Upload Destination",
+        "QbMirror": "[magnet/torrent] Mirror to Upload Destination using qbit",
+        "Ytdl": "[link] Mirror YouTube, m3u8, Social Media and yt-dlp supported urls",
+        "UpHoster": "[link/file] Upload to DDL Servers",
+        "Leech": "[link/file] Leech files to Upload to Telegram",
+        "QbLeech": "[magnet/torrent] Leech files to Upload to Telegram using qbit",
+        "YtdlLeech": "[link] Leech YouTube, m3u8, Social Media and yt-dlp supported urls",
+        "Clone": "[link] Clone files/folders to GDrive",
+        "UserSet": "User personal settings",
+        "ForceStart": "[gid/reply] Force start from queued task",
+        "Count": "[link] Count no. of files/folders in GDrive",
+        "List": "[query] Search any Text which is available in GDrive",
+        "Search": "[query] Search torrents via Qbit Plugins",
+        "MediaInfo": "[reply/link] Get MediaInfo of the Target Media",
+        "Select": "[gid/reply] Select files for NZB, Aria2, Qbit Tasks",
+        "Ping": "Ping Bot to test Response Speed",
+        "Status": "[id/me] Tasks Status of Bot",
+        "Stats": "Bot, OS, Repo & System full Statistics",
+        "Rss": "User RSS Management Settings",
+        "IMDB": "[query] or ttxxxxxx Get IMDB info",
+        "CancelAll": "Cancel all Tasks on the Bot",
+        "Help": "Detailed help usage of the WZ Bot",
+        "BotSet": "[SUDO] Bot Management Settings",
+        "Log": "[SUDO] Get Bot Logs for Internal Working",
+        "Restart": "[SUDO] Reboot bot",
+        "RestartSessions": "[SUDO] Reboot User Sessions",
+    }
+
+    commands = static_commands.copy()
+
+    plugin_manager = get_plugin_manager()
+    if plugin_manager:
+        for plugin_info in plugin_manager.list_plugins():
+            if plugin_info.enabled and plugin_info.commands:
+                for cmd in plugin_info.commands:
+                    if cmd == "speedtest":
+                        commands["SpeedTest"] = "Check Bot Speed using Speedtest.com"
+
+    return commands
 
 
-help_string = f"""
-NOTE: Try each command without any argument to see more detalis.
-/{BotCommands.MirrorCommand[0]} or /{BotCommands.MirrorCommand[1]}: Start mirroring to cloud.
-/{BotCommands.QbMirrorCommand[0]} or /{BotCommands.QbMirrorCommand[1]}: Start Mirroring to cloud using qBittorrent.
-/{BotCommands.JdMirrorCommand[0]} or /{BotCommands.JdMirrorCommand[1]}: Start Mirroring to cloud using JDownloader.
-/{BotCommands.NzbMirrorCommand[0]} or /{BotCommands.NzbMirrorCommand[1]}: Start Mirroring to cloud using Sabnzbd.
-/{BotCommands.YtdlCommand[0]} or /{BotCommands.YtdlCommand[1]}: Mirror yt-dlp supported link.
-/{BotCommands.GallerydlCommand[0]} or /{BotCommands.GallerydlCommand[1]}: Mirror gallery-dl supported link.
-/{BotCommands.LeechCommand[0]} or /{BotCommands.LeechCommand[1]}: Start leeching to Telegram.
-/{BotCommands.QbLeechCommand[0]} or /{BotCommands.QbLeechCommand[1]}: Start leeching using qBittorrent.
-/{BotCommands.JdLeechCommand[0]} or /{BotCommands.JdLeechCommand[1]}: Start leeching using JDownloader.
-/{BotCommands.NzbLeechCommand[0]} or /{BotCommands.NzbLeechCommand[1]}: Start leeching using Sabnzbd.
-/{BotCommands.YtdlLeechCommand[0]} or /{BotCommands.YtdlLeechCommand[1]}: Leech yt-dlp supported link.
-/{BotCommands.GallerydlLeechCommand[0]} or /{BotCommands.GallerydlLeechCommand[1]}: Leech gallery-dl supported link.
-/{BotCommands.CloneCommand} [drive_url]: Copy file/folder to Google Drive.
-/{BotCommands.CountCommand} [drive_url]: Count file/folder of Google Drive.
-/{BotCommands.DeleteCommand} [drive_url]: Delete file/folder from Google Drive (Only Owner & Sudo).
-/{BotCommands.UserSetCommand[0]} or /{BotCommands.UserSetCommand[1]} [query]: Users settings.
-/{BotCommands.BotSetCommand[0]} or /{BotCommands.BotSetCommand[1]} [query]: Bot settings.
-/{BotCommands.SelectCommand}: Select files from torrents or nzb by gid or reply.
-/{BotCommands.CancelTaskCommand[0]} or /{BotCommands.CancelTaskCommand[1]} [gid]: Cancel task by gid or reply.
-/{BotCommands.ForceStartCommand[0]} or /{BotCommands.ForceStartCommand[1]} [gid]: Force start task by gid or reply.
-/{BotCommands.CancelAllCommand} [query]: Cancel all [status] tasks.
-/{BotCommands.ListCommand} [query]: Search in Google Drive(s).
-/{BotCommands.SearchCommand} [query]: Search for torrents with API.
-/{BotCommands.StatusCommand}: Shows a status of all the downloads.
-/{BotCommands.StatsCommand}: Show stats of the machine where the bot is hosted in.
-/{BotCommands.PingCommand}: Check how long it takes to Ping the Bot (Only Owner & Sudo).
-/{BotCommands.AuthorizeCommand}: Authorize a chat or a user to use the bot (Only Owner & Sudo).
-/{BotCommands.UnAuthorizeCommand}: Unauthorize a chat or a user to use the bot (Only Owner & Sudo).
-/{BotCommands.UsersCommand}: show users settings (Only Owner & Sudo).
-/{BotCommands.AddSudoCommand}: Add sudo user (Only Owner).
-/{BotCommands.RmSudoCommand}: Remove sudo users (Only Owner).
-/{BotCommands.RestartCommand}: Restart and update the bot (Only Owner & Sudo).
-/{BotCommands.LogCommand}: Get a log file of the bot. Handy for getting crash reports (Only Owner & Sudo).
-/{BotCommands.ShellCommand}: Run shell commands (Only Owner).
-/{BotCommands.AExecCommand}: Exec async functions (Only Owner).
-/{BotCommands.ExecCommand}: Exec sync functions (Only Owner).
-/{BotCommands.ClearLocalsCommand}: Clear {BotCommands.AExecCommand} or {BotCommands.ExecCommand} locals (Only Owner).
-/{BotCommands.RssCommand}: RSS Menu.
-"""
+BOT_COMMANDS = get_bot_commands()
+
+
+def get_help_string():
+    from ..telegram_helper.bot_commands import BotCommands
+
+    help_lines = ["NOTE: Try each command without any argument to see more detalis."]
+
+    commands = BotCommands.get_commands()
+
+    for key, cmds in commands.items():
+        cmd_attr = getattr(BotCommands, f"{key}Command", None)
+        if not cmd_attr:
+            continue
+
+        if isinstance(cmd_attr, list):
+            cmd_str = f"/{' or /'.join(cmd_attr)}"
+        else:
+            cmd_str = f"/{cmd_attr}"
+
+        if key == "SpeedTest" and key in BOT_COMMANDS:
+            help_lines.append(f"{cmd_str}: Check Bot Speed using Speedtest.com")
+        elif key == "Mirror":
+            help_lines.append(f"{cmd_str}: Start mirroring to cloud.")
+        elif key == "QbMirror":
+            help_lines.append(f"{cmd_str}: Start Mirroring to cloud using qBittorrent.")
+        elif key == "JdMirror":
+            help_lines.append(f"{cmd_str}: Start Mirroring to cloud using JDownloader.")
+        elif key == "NzbMirror":
+            help_lines.append(f"{cmd_str}: Start Mirroring to cloud using Sabnzbd.")
+        elif key == "Ytdl":
+            help_lines.append(f"{cmd_str}: Mirror yt-dlp supported link.")
+        elif key == "UpHoster":
+            help_lines.append(f"{cmd_str}: Upload to DDL Servers.")
+        elif key == "Leech":
+            help_lines.append(f"{cmd_str}: Start leeching to Telegram.")
+        elif key == "QbLeech":
+            help_lines.append(f"{cmd_str}: Start leeching using qBittorrent.")
+        elif key == "JdLeech":
+            help_lines.append(f"{cmd_str}: Start leeching using JDownloader.")
+        elif key == "NzbLeech":
+            help_lines.append(f"{cmd_str}: Start leeching using Sabnzbd.")
+        elif key == "YtdlLeech":
+            help_lines.append(f"{cmd_str}: Leech yt-dlp supported link.")
+        elif key == "Clone":
+            help_lines.append(
+                f"{cmd_str} [drive_url]: Copy file/folder to Google Drive."
+            )
+        elif key == "Count":
+            help_lines.append(
+                f"{cmd_str} [drive_url]: Count file/folder of Google Drive."
+            )
+        elif key == "Delete":
+            help_lines.append(
+                f"{cmd_str} [drive_url]: Delete file/folder from Google Drive (Only Owner & Sudo)."
+            )
+        elif key == "UserSet":
+            help_lines.append(f"{cmd_str} [query]: Users settings.")
+        elif key == "BotSet":
+            help_lines.append(f"{cmd_str} [query]: Bot settings.")
+        elif key == "Select":
+            help_lines.append(
+                f"{cmd_str}: Select files from torrents or nzb by gid or reply."
+            )
+        elif key == "CancelTask":
+            help_lines.append(f"{cmd_str} [gid]: Cancel task by gid or reply.")
+        elif key == "ForceStart":
+            help_lines.append(f"{cmd_str} [gid]: Force start task by gid or reply.")
+        elif key == "CancelAll":
+            help_lines.append(f"{cmd_str} [query]: Cancel all [status] tasks.")
+        elif key == "List":
+            help_lines.append(f"{cmd_str} [query]: Search in Google Drive(s).")
+        elif key == "Search":
+            help_lines.append(f"{cmd_str} [query]: Search for torrents with API.")
+        elif key == "MediaInfo":
+            help_lines.append(f"{cmd_str} [query]: Get media info.")
+        elif key == "Status":
+            help_lines.append(f"{cmd_str}: Shows a status of all the downloads.")
+        elif key == "Stats":
+            help_lines.append(
+                f"{cmd_str}: Show stats of the machine where the bot is hosted in."
+            )
+        elif key == "Ping":
+            help_lines.append(
+                f"{cmd_str}: Check how long it takes to Ping the Bot (Only Owner & Sudo)."
+            )
+        elif key == "Authorize":
+            help_lines.append(
+                f"{cmd_str}: Authorize a chat or a user to use the bot (Only Owner & Sudo)."
+            )
+        elif key == "UnAuthorize":
+            help_lines.append(
+                f"{cmd_str}: Unauthorize a chat or a user to use the bot (Only Owner & Sudo)."
+            )
+        elif key == "Users":
+            help_lines.append(f"{cmd_str}: show users settings (Only Owner & Sudo).")
+        elif key == "AddSudo":
+            help_lines.append(f"{cmd_str}: Add sudo user (Only Owner).")
+        elif key == "RmSudo":
+            help_lines.append(f"{cmd_str}: Remove sudo users (Only Owner).")
+        elif key == "Restart":
+            help_lines.append(
+                f"{cmd_str}: Restart and update the bot (Only Owner & Sudo)."
+            )
+        elif key == "Log":
+            help_lines.append(
+                f"{cmd_str}: Get a log file of the bot. Handy for getting crash reports (Only Owner & Sudo)."
+            )
+        elif key == "Shell":
+            help_lines.append(f"{cmd_str}: Run shell commands (Only Owner).")
+        elif key == "AExec":
+            help_lines.append(f"{cmd_str}: Exec async functions (Only Owner).")
+        elif key == "Exec":
+            help_lines.append(f"{cmd_str}: Exec sync functions (Only Owner).")
+        elif key == "ClearLocals":
+            help_lines.append(
+                f"/{BotCommands.ClearLocalsCommand}: Clear {BotCommands.AExecCommand} or {BotCommands.ExecCommand} locals (Only Owner)."
+            )
+        elif key == "Rss":
+            help_lines.append(f"/{BotCommands.RssCommand}: RSS Menu.")
+
+    return "\n".join(help_lines)
+
+
+help_string = get_help_string()

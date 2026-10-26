@@ -1,11 +1,16 @@
 from asyncio import gather
 from json import loads
-from secrets import token_urlsafe
+from secrets import token_hex
 from aiofiles.os import remove
 
 from .... import task_dict, task_dict_lock, LOGGER
+from ....core.config_manager import BinConfig
 from ...ext_utils.bot_utils import cmd_exec
-from ...ext_utils.task_manager import check_running_tasks, stop_duplicate_check
+from ...ext_utils.task_manager import (
+    check_running_tasks,
+    stop_duplicate_check,
+    limit_checker,
+)
 from ...mirror_leech_utils.rclone_utils.transfer import RcloneTransferHelper
 from ...mirror_leech_utils.status_utils.queue_status import QueueStatus
 from ...mirror_leech_utils.status_utils.rclone_status import RcloneStatus
@@ -13,8 +18,8 @@ from ...telegram_helper.message_utils import send_status_message
 
 
 async def add_rclone_download(listener, path):
-    if listener.link.startswith("mt:"):
-        listener.link = listener.link.split("mt:", 1)[1]
+    if listener.link.startswith("mrcc:"):
+        listener.link = listener.link.split("mrcc:", 1)[1]
         config_path = f"rclone/{listener.user_id}.conf"
     else:
         config_path = "rclone.conf"
@@ -29,7 +34,7 @@ async def add_rclone_download(listener, path):
         rpath = listener.link
 
     cmd1 = [
-        "rclone",
+        BinConfig.RCLONE_NAME,
         "lsjson",
         "--fast-list",
         "--stat",
@@ -40,7 +45,7 @@ async def add_rclone_download(listener, path):
         f"{remote}:{rpath}",
     ]
     cmd2 = [
-        "rclone",
+        BinConfig.RCLONE_NAME,
         "size",
         "--fast-list",
         "--json",
@@ -87,12 +92,15 @@ async def add_rclone_download(listener, path):
         else:
             listener.name = listener.link.rsplit("/", 1)[-1]
     listener.size = rsize["bytes"]
-    gid = token_urlsafe(12)
+    gid = token_hex(5)
 
     if not rclone_select:
         msg, button = await stop_duplicate_check(listener)
         if msg:
             await listener.on_download_error(msg, button)
+            return
+        if limit_exceeded := await limit_checker(listener):
+            await listener.on_download_error(limit_exceeded, is_limit=True)
             return
 
     add_to_queue, event = await check_running_tasks(listener)

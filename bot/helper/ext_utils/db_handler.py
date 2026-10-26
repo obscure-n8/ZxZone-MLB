@@ -1,13 +1,14 @@
+from importlib import import_module
+
 from aiofiles import open as aiopen
 from aiofiles.os import path as aiopath
-from importlib import import_module
 from pymongo import AsyncMongoClient
-from pymongo.server_api import ServerApi
 from pymongo.errors import PyMongoError
+from pymongo.server_api import ServerApi
 
-from ... import LOGGER, user_data, rss_dict, qbit_options
-from ...core.telegram_manager import TgClient
+from ... import LOGGER, qbit_options, rss_dict, user_data
 from ...core.config_manager import Config
+from ...core.tg_client import TgClient
 
 
 class DbManager:
@@ -21,12 +22,9 @@ class DbManager:
             if self._conn is not None:
                 await self._conn.close()
             self._conn = AsyncMongoClient(
-                Config.DATABASE_URL,
-                server_api=ServerApi("1"),
-                connectTimeoutMS=60000,
-                serverSelectionTimeoutMS=60000,
+                Config.DATABASE_URL, server_api=ServerApi("1")
             )
-            self.db = self._conn[Config.DATABASE_NAME]
+            self.db = self._conn.wzmlx
             self._return = False
         except PyMongoError as e:
             LOGGER.error(f"Error in DB connection: {e}")
@@ -43,15 +41,12 @@ class DbManager:
     async def update_deploy_config(self):
         if self._return:
             return
-        try:
-            settings = import_module("config")
-            config_file = {
-                key: value.strip() if isinstance(value, str) else value
-                for key, value in vars(settings).items()
-                if not key.startswith("__")
-            }
-        except ModuleNotFoundError:
-            return
+        settings = import_module("config")
+        config_file = {
+            key: value.strip() if isinstance(value, str) else value
+            for key, value in vars(settings).items()
+            if not key.startswith("__")
+        }
         await self.db.settings.deployConfig.replace_one(
             {"_id": TgClient.ID}, config_file, upsert=True
         )
@@ -115,7 +110,7 @@ class DbManager:
             return
         data = user_data.get(user_id, {})
         data = data.copy()
-        for key in ("THUMBNAIL", "RCLONE_CONFIG", "TOKEN_PICKLE"):
+        for key in ("THUMBNAIL", "RCLONE_CONFIG", "TOKEN_PICKLE", "USER_COOKIE_FILE"):
             data.pop(key, None)
         pipeline = [
             {
@@ -135,6 +130,7 @@ class DbManager:
                                                     "THUMBNAIL",
                                                     "RCLONE_CONFIG",
                                                     "TOKEN_PICKLE",
+                                                    "USER_COOKIE_FILE",
                                                 ],
                                             ]
                                         },
@@ -146,7 +142,9 @@ class DbManager:
                 }
             }
         ]
-        await self.db.users.update_one({"_id": user_id}, pipeline, upsert=True)
+        await self.db.users[TgClient.ID].update_one(
+            {"_id": user_id}, pipeline, upsert=True
+        )
 
     async def update_user_doc(self, user_id, key, path=""):
         if self._return:
@@ -154,11 +152,11 @@ class DbManager:
         if path:
             async with aiopen(path, "rb+") as doc:
                 doc_bin = await doc.read()
-            await self.db.users.update_one(
+            await self.db.users[TgClient.ID].update_one(
                 {"_id": user_id}, {"$set": {key: doc_bin}}, upsert=True
             )
         else:
-            await self.db.users.update_one(
+            await self.db.users[TgClient.ID].update_one(
                 {"_id": user_id}, {"$unset": {key: ""}}, upsert=True
             )
 
@@ -188,6 +186,23 @@ class DbManager:
         await self.db.tasks[TgClient.ID].insert_one(
             {"_id": link, "cid": cid, "tag": tag}
         )
+
+    async def get_pm_uids(self):
+        if self._return:
+            return
+        return [doc["_id"] async for doc in self.db.pm_users[TgClient.ID].find({})]
+
+    async def set_pm_users(self, user_id):
+        if self._return:
+            return
+        if not bool(await self.db.pm_users[TgClient.ID].find_one({"_id": user_id})):
+            await self.db.pm_users[TgClient.ID].insert_one({"_id": user_id})
+            LOGGER.info(f"New PM User Added : {user_id}")
+
+    async def rm_pm_user(self, user_id):
+        if self._return:
+            return
+        await self.db.pm_users[TgClient.ID].delete_one({"_id": user_id})
 
     async def rm_complete_task(self, link):
         if self._return:

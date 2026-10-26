@@ -1,46 +1,102 @@
 from ...core.config_manager import Config
+from ...core.plugin_manager import get_plugin_manager
 
-i = Config.CMD_SUFFIX
 
 class BotCommands:
-    StartCommand = f"start{i}"
-    MirrorCommand = [f"mirror{i}", f"m{i}"]
-    QbMirrorCommand = [f"qbmirror{i}", f"qm{i}"]
-    JdMirrorCommand = [f"jdmirror{i}", f"jm{i}"]
-    YtdlCommand = [f"ytdl{i}", f"y{i}"]
-    GallerydlCommand = [f"gallerydl{i}", f"gdl{i}"]
-    NzbMirrorCommand = [f"nzbmirror{i}", f"nm{i}"]
-    LeechCommand = [f"leech{i}", f"l{i}"]
-    QbLeechCommand = [f"qbleech{i}", f"ql{i}"]
-    JdLeechCommand = [f"jdleech{i}", f"jl{i}"]
-    YtdlLeechCommand = [f"ytdlleech{i}", f"yl{i}"]
-    GallerydlLeechCommand = [f"gallerydlleech{i}", f"gdlleech{i}"]
-    NzbLeechCommand = [f"nzbleech{i}", f"nl{i}"]
-    CloneCommand = f"clone{i}"
-    CountCommand = f"count{i}"
-    DeleteCommand = f"del{i}"
-    CancelTaskCommand = [f"cancel{i}", f"c{i}"]
-    CancelAllCommand = f"cancelall{i}"
-    ForceStartCommand = [f"forcestart{i}", f"fs{i}"]
-    ListCommand = f"list{i}"
-    SearchCommand = f"search{i}"
-    StatusCommand = f"status{i}"
-    UsersCommand = f"users{i}"
-    AuthorizeCommand = f"auth{i}"
-    UnAuthorizeCommand = f"unauth{i}"
-    AddSudoCommand = f"addsudo{i}"
-    RmSudoCommand = f"rmsudo{i}"
-    PingCommand = f"ping{i}"
-    RestartCommand = f"restart{i}"
-    StatsCommand = f"stats{i}"
-    HelpCommand = f"help{i}"
-    LogCommand = f"log{i}"
-    ShellCommand = f"shell{i}"
-    AExecCommand = f"aexec{i}"
-    ExecCommand = f"exec{i}"
-    ClearLocalsCommand = f"clearlocals{i}"
-    BotSetCommand = [f"bsetting{i}", f"bs{i}"]
-    UserSetCommand = [f"usetting{i}", f"us{i}"]
-    SelectCommand = f"sel{i}"
-    RssCommand = f"rss{i}"
-    NzbSearchCommand = f"nzbsearch{i}"
+    StartCommand = "start"
+    LoginCommand = "login"
+
+    _static_commands = {
+        "Mirror": ["mirror", "m"],
+        "QbMirror": ["qbmirror", "qm"],
+        "JdMirror": ["jdmirror", "jm"],
+        "Ytdl": ["ytdl", "y"],
+        "UpHoster": ["uphoster", "up"],
+        "NzbMirror": ["nzbmirror", "nm"],
+        "Leech": ["leech", "l"],
+        "QbLeech": ["qbleech", "ql"],
+        "JdLeech": ["jdleech", "jl"],
+        "YtdlLeech": ["ytdlleech", "yl"],
+        "NzbLeech": ["nzbleech", "nl"],
+        "Clone": ["clone", "cl"],
+        "Count": "count",
+        "Delete": "del",
+        "List": "list",
+        "Search": "search",
+        "Users": "users",
+        "CancelTask": ["cancel", "c"],
+        "CancelAll": ["cancelall", "call"],
+        "ForceStart": ["forcestart", "fs"],
+        "Status": ["status", "s", "statusall"],
+        "MediaInfo": ["mediainfo", "mi"],
+        "Ping": "ping",
+        "Restart": ["restart", "r", "restartall"],
+        "RestartSessions": ["restartses", "rses"],
+        "Broadcast": ["broadcast", "bc"],
+        "Stats": ["stats", "st"],
+        "Help": ["help", "h"],
+        "Log": "log",
+        "Shell": "shell",
+        "AExec": "aexec",
+        "Exec": "exec",
+        "ClearLocals": "clearlocals",
+        "IMDB": "imdb",
+        "Rss": "rss",
+        "Authorize": ["authorize", "a"],
+        "UnAuthorize": ["unauthorize", "ua"],
+        "AddSudo": ["addsudo", "as"],
+        "RmSudo": ["rmsudo", "rs"],
+        "BotSet": ["bsetting", "bs"],
+        "UserSet": ["usetting", "us"],
+        "Select": ["select", "sel"],
+        "NzbSearch": ["nzbsearch", "ns"],
+        "Plugins": "plugins",
+    }
+
+    @classmethod
+    def get_commands(cls):
+        commands = cls._static_commands.copy()
+
+        plugin_manager = get_plugin_manager()
+        if plugin_manager:
+            for plugin_info in plugin_manager.list_plugins():
+                if plugin_info.enabled and plugin_info.commands:
+                    for cmd in plugin_info.commands:
+                        if cmd == "speedtest":
+                            commands["SpeedTest"] = ["speedtest", "stest"]
+                        elif cmd == "stest":
+                            if "SpeedTest" not in commands:
+                                commands["SpeedTest"] = ["speedtest", "stest"]
+                            elif "stest" not in commands["SpeedTest"]:
+                                commands["SpeedTest"].append("stest")
+
+        return commands
+
+    @classmethod
+    def _build_command_vars(cls):
+        commands = cls.get_commands()
+
+        for key, cmds in commands.items():
+            setattr(
+                cls,
+                f"{key}Command",
+                (
+                    [
+                        (
+                            f"{cmd}{Config.CMD_SUFFIX}"
+                            if cmd not in ["restartall", "statusall"]
+                            else cmd
+                        )
+                        for cmd in cmds
+                    ]
+                    if isinstance(cmds, list)
+                    else f"{cmds}{Config.CMD_SUFFIX}"
+                ),
+            )
+
+    @classmethod
+    def refresh_commands(cls):
+        cls._build_command_vars()
+
+
+BotCommands._build_command_vars()

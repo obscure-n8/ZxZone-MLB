@@ -5,11 +5,12 @@ from configparser import RawConfigParser
 from functools import partial
 from json import loads
 from pyrogram.filters import regex, user
+from pyrogram.enums import ButtonStyle
 from pyrogram.handlers import CallbackQueryHandler
 from time import time
 
 from .... import LOGGER
-from ....core.config_manager import Config
+from ....core.config_manager import Config, BinConfig
 from ...ext_utils.bot_utils import cmd_exec, update_user_ldata, new_task
 from ...ext_utils.db_handler import database
 from ...ext_utils.status_utils import get_readable_file_size, get_readable_time
@@ -111,7 +112,7 @@ async def path_updates(_, query, obj):
         path = (
             f"{obj.remote}{obj.path}"
             if obj.config_path == "rclone.conf"
-            else f"mt:{obj.remote}{obj.path}"
+            else f"mrcc:{obj.remote}{obj.path}"
         )
         if path != obj.listener.user_dict.get("RCLONE_PATH"):
             update_user_ldata(obj.listener.user_id, "RCLONE_PATH", path)
@@ -164,7 +165,7 @@ class RcloneList:
         )
         try:
             await wait_for(self.event.wait(), timeout=self._timeout)
-        except:
+        except Exception:
             self.path = ""
             self.remote = "Timed Out. Task has been cancelled!"
             self.listener.is_cancelled = True
@@ -218,7 +219,12 @@ class RcloneList:
                     "Folders", "rcq itype --dirs-only", position="footer"
                 )
         if self.list_status == "rcu" or len(self.path_list) > 0:
-            buttons.data_button("Choose Current Path", "rcq cur", position="footer")
+            buttons.data_button(
+                "Choose Current Path",
+                "rcq cur",
+                position="footer",
+                style=ButtonStyle.SUCCESS,
+            )
         if self.list_status == "rcd":
             buttons.data_button(
                 f"Select: {'Enabled' if self.select else 'Disabled'}",
@@ -226,15 +232,29 @@ class RcloneList:
                 position="footer",
             )
         if len(self.selected_pathes) > 1:
-            buttons.data_button("Done With Selection", "rcq ds", position="footer")
+            buttons.data_button(
+                "Done With Selection",
+                "rcq ds",
+                position="footer",
+                style=ButtonStyle.SUCCESS,
+            )
             buttons.data_button("Clear Selection", "rcq clear", position="footer")
         if self.list_status == "rcu":
-            buttons.data_button("Set as Default Path", "rcq def", position="footer")
+            buttons.data_button(
+                "Set as Default Path",
+                "rcq def",
+                position="footer",
+                style=ButtonStyle.SUCCESS,
+            )
         if self.path or len(self._sections) > 1 or self._rc_user and self._rc_owner:
             buttons.data_button("Back", "rcq back pa", position="footer")
         if self.path:
-            buttons.data_button("Back To Root", "rcq root", position="footer")
-        buttons.data_button("Cancel", "rcq cancel", position="footer")
+            buttons.data_button(
+                "Back To Root", "rcq root", position="footer", style=ButtonStyle.SUCCESS
+            )
+        buttons.data_button(
+            "Cancel", "rcq cancel", position="footer", style=ButtonStyle.DANGER
+        )
         button = buttons.build_menu(f_cols=2)
         msg = "Choose Path:" + (
             "\nTransfer Type: <i>Download</i>"
@@ -258,7 +278,7 @@ class RcloneList:
         elif itype:
             self.item_type = itype
         cmd = [
-            "rclone",
+            BinConfig.RCLONE_NAME,
             "lsjson",
             self.item_type,
             "--fast-list",
@@ -323,7 +343,9 @@ class RcloneList:
                 buttons.data_button(remote, f"rcq re {remote}:")
             if self._rc_user and self._rc_owner:
                 buttons.data_button("Back", "rcq back re", position="footer")
-            buttons.data_button("Cancel", "rcq cancel", position="footer")
+            buttons.data_button(
+                "Cancel", "rcq cancel", position="footer", style=ButtonStyle.DANGER
+            )
             button = buttons.build_menu(2)
             await self._send_list_message(msg, button)
 
@@ -340,7 +362,7 @@ class RcloneList:
             buttons = ButtonMaker()
             buttons.data_button("Owner Config", "rcq owner")
             buttons.data_button("My Config", "rcq user")
-            buttons.data_button("Cancel", "rcq cancel")
+            buttons.data_button("Cancel", "rcq cancel", style=ButtonStyle.DANGER)
             button = buttons.build_menu(2)
             await self._send_list_message(msg, button)
         else:
@@ -373,5 +395,5 @@ class RcloneList:
         await self._event_handler()
         await delete_message(self._reply_to)
         if self.config_path != "rclone.conf" and not self.listener.is_cancelled:
-            return f"mt:{self.remote}{self.path}"
+            return f"mrcc:{self.remote}{self.path}"
         return f"{self.remote}{self.path}"

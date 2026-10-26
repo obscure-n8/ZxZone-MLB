@@ -17,7 +17,7 @@ from ...core.torrent_manager import TorrentManager
 from ..ext_utils.bot_utils import new_task
 from ..ext_utils.files_utils import clean_unwanted
 from ..ext_utils.status_utils import get_readable_time, get_task_by_gid
-from ..ext_utils.task_manager import stop_duplicate_check
+from ..ext_utils.task_manager import stop_duplicate_check, limit_checker
 from ..mirror_leech_utils.status_utils.qbit_status import QbittorrentStatus
 from ..telegram_helper.message_utils import update_status_message
 
@@ -31,11 +31,11 @@ async def _remove_torrent(hash_, tag):
 
 
 @new_task
-async def _on_download_error(err, tor, button=None):
+async def _on_download_error(err, tor, button=None, is_limit=False):
     LOGGER.info(f"Cancelling Download: {tor.name}")
     ext_hash = tor.hash
     if task := await get_task_by_gid(ext_hash[:12]):
-        await task.listener.on_download_error(err, button)
+        await task.listener.on_download_error(err, button, is_limit)
     await TorrentManager.qbittorrent.torrents.stop([ext_hash])
     await sleep(0.3)
     await _remove_torrent(ext_hash, tor.tags[0])
@@ -60,7 +60,16 @@ async def _stop_duplicate(tor):
             ]
             msg, button = await stop_duplicate_check(task.listener)
             if msg:
-                _on_download_error(msg, tor, button)
+                await _on_download_error(msg, tor, button)
+
+
+@new_task
+async def _size_check(tor):
+    if task := await get_task_by_gid(tor.hash[:12]):
+        task.listener.size = tor.size
+        mmsg = await limit_checker(task.listener)
+        if mmsg:
+            await _on_download_error(mmsg, tor, is_limit=True)
 
 
 @new_task
@@ -78,7 +87,7 @@ async def _on_download_complete(tor):
                 if f.priority == 0 and await aiopath.exists(f"{path}/{f.name}"):
                     try:
                         await remove(f"{path}/{f.name}")
-                    except:
+                    except Exception:
                         pass
         await task.listener.on_download_complete()
         if intervals["stopAll"]:
@@ -139,6 +148,9 @@ async def _qb_listener():
                         if not qb_torrents[tag]["stop_dup_check"]:
                             qb_torrents[tag]["stop_dup_check"] = True
                             await _stop_duplicate(tor_info)
+                        if not qb_torrents[tag]["size_check"]:
+                            qb_torrents[tag]["size_check"] = True
+                            await _size_check(tor_info)
                     elif state == "stalledDL":
                         if (
                             not qb_torrents[tag]["rechecked"]
@@ -173,6 +185,13 @@ async def _qb_listener():
                     elif (
                         int(tor_info.completion_on.timestamp()) != -1
                         and not qb_torrents[tag]["uploaded"]
+                        and state
+                        in [
+                            "queuedUP",
+                            "stalledUP",
+                            "uploading",
+                            "forcedUP",
+                        ]
                     ):
                         qb_torrents[tag]["uploaded"] = True
                         await _on_download_complete(tor_info)
@@ -194,6 +213,7 @@ async def on_download_start(tag):
             "start_time": time(),
             "stalled_time": time(),
             "stop_dup_check": False,
+            "size_check": False,
             "rechecked": False,
             "uploaded": False,
             "seeding": False,

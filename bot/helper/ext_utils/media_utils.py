@@ -1,20 +1,35 @@
+import re
+from contextlib import suppress
 from PIL import Image
+from hashlib import md5
 from aiofiles.os import remove, path as aiopath, makedirs
+import json
 from asyncio import (
     create_subprocess_exec,
     gather,
     wait_for,
+    sleep,
 )
 from asyncio.subprocess import PIPE
 from os import path as ospath
 from re import search as re_search, escape
 from time import time
 from aioshutil import rmtree
+from langcodes import Language
 
 from ... import LOGGER, DOWNLOAD_DIR, threads, cores
+from ...core.config_manager import BinConfig
 from .bot_utils import cmd_exec, sync_to_async
 from .files_utils import get_mime_type, is_archive, is_archive_split
 from .status_utils import time_to_seconds
+
+
+def get_md5_hash(up_path):
+    md5_hash = md5()
+    with open(up_path, "rb") as f:
+        for byte_block in iter(lambda: f.read(4096), b""):
+            md5_hash.update(byte_block)
+        return md5_hash.hexdigest()
 
 
 async def create_thumb(msg, _id=""):
@@ -31,11 +46,85 @@ async def create_thumb(msg, _id=""):
     return output
 
 
-def ffconcat_escape(path):
-    return path.replace("'", r"'\''")
+async def download_image_thumb(url):
+    """Download an image from a URL and save it as a JPEG thumbnail.
+
+    Validates that the URL points to an image via Content-Type header check.
+    Returns the path to the saved thumbnail, or empty string on failure.
+    """
+    from httpx import AsyncClient
+
+    # Content types that are definitely NOT images
+    NON_IMAGE_TYPES = (
+        "text/",
+        "application/json",
+        "application/xml",
+        "application/javascript",
+        "video/",
+        "audio/",
+    )
+    try:
+        async with AsyncClient(
+            verify=False, follow_redirects=True, timeout=30
+        ) as client:
+            # HEAD request to check content type and size
+            try:
+                head_resp = await client.head(url)
+                content_type = head_resp.headers.get("content-type", "")
+                if content_type and any(
+                    content_type.startswith(t) for t in NON_IMAGE_TYPES
+                ):
+                    LOGGER.error(f"Thumb URL is not an image: {content_type}")
+                    return ""
+
+            except Exception:
+                pass  # HEAD failed, will check during GET
+
+            # Download the image
+            resp = await client.get(url)
+            if resp.status_code != 200:
+                LOGGER.error(f"Failed to download thumb URL: HTTP {resp.status_code}")
+                return ""
+
+            # Only reject known non-image types; unknown types are allowed
+            # PIL will validate the actual image data below
+            content_type = resp.headers.get("content-type", "")
+            if content_type and any(
+                content_type.startswith(t) for t in NON_IMAGE_TYPES
+            ):
+                LOGGER.error(f"Thumb URL is not an image: {content_type}")
+                return ""
+
+            data = resp.content
+
+            # Save and convert to JPEG
+            path = f"{DOWNLOAD_DIR}thumbnails"
+            await makedirs(path, exist_ok=True)
+            tmp_path = ospath.join(path, f"{time()}_tmp")
+            with open(tmp_path, "wb") as f:
+                f.write(data)
+            output = ospath.join(path, f"{time()}.jpg")
+
+            def _process_thumb(src, dst):
+                with Image.open(src) as im:
+                    im.convert("RGB").save(dst, "JPEG")
+
+            try:
+                await sync_to_async(_process_thumb, tmp_path, output)
+            except Exception as e:
+                LOGGER.error(f"Failed to process thumb image: {e}")
+                with suppress(Exception):
+                    await remove(tmp_path)
+                return ""
+            with suppress(Exception):
+                await remove(tmp_path)
+            return output
+    except Exception as e:
+        LOGGER.error(f"Error downloading thumb from URL: {e}")
+        return ""
 
 
-async def get_media_info(path):
+async def get_media_info(path, extra_info=False):
     try:
         result = await cmd_exec(
             [
@@ -46,23 +135,48 @@ async def get_media_info(path):
                 "-print_format",
                 "json",
                 "-show_format",
+                "-show_streams",
                 path,
             ]
         )
     except Exception as e:
         LOGGER.error(f"Get Media Info: {e}. Mostly File not found! - File: {path}")
-        return 0, None, None
+        return (0, "", "", "") if extra_info else (0, None, None)
     if result[0] and result[2] == 0:
-        fields = eval(result[0]).get("format")
+        ffresult = eval(result[0])
+        fields = ffresult.get("format")
         if fields is None:
             LOGGER.error(f"get_media_info: {result}")
-            return 0, None, None
+            return (0, "", "", "") if extra_info else (0, None, None)
         duration = round(float(fields.get("duration", 0)))
+        if extra_info:
+            lang, qual, stitles = "", "", ""
+            if (streams := ffresult.get("streams")) and streams[0].get(
+                "codec_type"
+            ) == "video":
+                qual = int(streams[0].get("height"))
+                qual = f"{480 if qual <= 480 else 540 if qual <= 540 else 720 if qual <= 720 else 1080 if qual <= 1080 else 2160 if qual <= 2160 else 4320 if qual <= 4320 else 8640}p"
+                for stream in streams:
+                    if stream.get("codec_type") == "audio" and (
+                        lc := stream.get("tags", {}).get("language")
+                    ):
+                        with suppress(Exception):
+                            lc = Language.get(lc).display_name()
+                        if lc not in lang:
+                            lang += f"{lc}, "
+                    if stream.get("codec_type") == "subtitle" and (
+                        st := stream.get("tags", {}).get("language")
+                    ):
+                        with suppress(Exception):
+                            st = Language.get(st).display_name()
+                        if st not in stitles:
+                            stitles += f"{st}, "
+            return duration, qual, lang[:-2], stitles[:-2]
         tags = fields.get("tags", {})
         artist = tags.get("artist") or tags.get("ARTIST") or tags.get("Artist")
         title = tags.get("title") or tags.get("TITLE") or tags.get("Title")
         return duration, artist, title
-    return 0, None, None
+    return (0, "", "", "") if extra_info else (0, None, None)
 
 
 async def get_document_type(path):
@@ -116,6 +230,43 @@ async def get_document_type(path):
     return is_video, is_audio, is_image
 
 
+async def get_streams(file):
+    """
+    Gets media stream information using ffprobe.
+
+    Args:
+        file: Path to the media file.
+
+    Returns:
+        A list of stream objects (dictionaries) or None if an error occurs
+        or no streams are found.
+    """
+    cmd = [
+        "ffprobe",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-print_format",
+        "json",
+        "-show_streams",
+        file,
+    ]
+    process = await create_subprocess_exec(*cmd, stdout=PIPE, stderr=PIPE)
+    stdout, stderr = await process.communicate()
+
+    if process.returncode != 0:
+        LOGGER.error(f"Error getting stream info: {stderr.decode().strip()}")
+        return None
+
+    try:
+        return json.loads(stdout)["streams"]
+    except KeyError:
+        LOGGER.error(
+            f"No streams found in the ffprobe output: {stdout.decode().strip()}",
+        )
+        return None
+
+
 async def take_ss(video_file, ss_nb) -> bool:
     duration = (await get_media_info(video_file))[0]
     if duration != 0:
@@ -132,7 +283,7 @@ async def take_ss(video_file, ss_nb) -> bool:
                 "taskset",
                 "-c",
                 f"{cores}",
-                "ffmpeg",
+                BinConfig.FFMPEG_NAME,
                 "-hide_banner",
                 "-loglevel",
                 "error",
@@ -158,7 +309,7 @@ async def take_ss(video_file, ss_nb) -> bool:
                 )
                 await rmtree(dirpath, ignore_errors=True)
                 return False
-        except:
+        except Exception:
             LOGGER.error(
                 f"Error while creating screenshots from video. Path: {video_file}. Error: Timeout some issues with ffmpeg with specific arch!"
             )
@@ -178,7 +329,7 @@ async def get_audio_thumbnail(audio_file):
         "taskset",
         "-c",
         f"{cores}",
-        "ffmpeg",
+        BinConfig.FFMPEG_NAME,
         "-hide_banner",
         "-loglevel",
         "error",
@@ -198,7 +349,7 @@ async def get_audio_thumbnail(audio_file):
                 f"Error while extracting thumbnail from audio. Name: {audio_file} stderr: {err}"
             )
             return None
-    except:
+    except Exception:
         LOGGER.error(
             f"Error while extracting thumbnail from audio. Name: {audio_file}. Error: Timeout some issues with ffmpeg with specific arch!"
         )
@@ -219,7 +370,7 @@ async def get_video_thumbnail(video_file, duration):
         "taskset",
         "-c",
         f"{cores}",
-        "ffmpeg",
+        BinConfig.FFMPEG_NAME,
         "-hide_banner",
         "-loglevel",
         "error",
@@ -244,7 +395,7 @@ async def get_video_thumbnail(video_file, duration):
                 f"Error while extracting thumbnail from video. Name: {video_file} stderr: {err}"
             )
             return None
-    except:
+    except Exception:
         LOGGER.error(
             f"Error while extracting thumbnail from video. Name: {video_file}. Error: Timeout some issues with ffmpeg with specific arch!"
         )
@@ -253,8 +404,15 @@ async def get_video_thumbnail(video_file, duration):
 
 
 async def get_multiple_frames_thumbnail(video_file, layout, keep_screenshots):
+    layout = re.sub(r"(\d+)\D+(\d+)", r"\1x\2", layout)
     ss_nb = layout.split("x")
+    if len(ss_nb) != 2 or not ss_nb[0].isdigit() or not ss_nb[1].isdigit():
+        LOGGER.error(f"Invalid layout value: {layout}")
+        return None
     ss_nb = int(ss_nb[0]) * int(ss_nb[1])
+    if ss_nb == 0:
+        LOGGER.error(f"Invalid layout value: {layout}")
+        return None
     dirpath = await take_ss(video_file, ss_nb)
     if not dirpath:
         return None
@@ -265,7 +423,7 @@ async def get_multiple_frames_thumbnail(video_file, layout, keep_screenshots):
         "taskset",
         "-c",
         f"{cores}",
-        "ffmpeg",
+        BinConfig.FFMPEG_NAME,
         "-hide_banner",
         "-loglevel",
         "error",
@@ -292,7 +450,7 @@ async def get_multiple_frames_thumbnail(video_file, layout, keep_screenshots):
                 f"Error while combining thumbnails for video. Name: {video_file} stderr: {err}"
             )
             return None
-    except:
+    except Exception:
         LOGGER.error(
             f"Error while combining thumbnails from video. Name: {video_file}. Error: Timeout some issues with ffmpeg with specific arch!"
         )
@@ -304,7 +462,6 @@ async def get_multiple_frames_thumbnail(video_file, layout, keep_screenshots):
 
 
 class FFMpeg:
-
     def __init__(self, listener):
         self._listener = listener
         self._processed_bytes = 0
@@ -353,7 +510,7 @@ class FFMpeg:
         ):
             try:
                 line = await wait_for(self._listener.subproc.stdout.readline(), 60)
-            except:
+            except Exception:
                 break
             line = line.decode().strip()
             if not line:
@@ -376,29 +533,37 @@ class FFMpeg:
                             self._progress_raw = (
                                 self._processed_time * 100
                             ) / self._total_time
+                            if (
+                                hasattr(self._listener, "subsize")
+                                and self._listener.subsize
+                                and self._progress_raw > 0
+                            ):
+                                self._processed_bytes = int(
+                                    self._listener.subsize * (self._progress_raw / 100)
+                                )
+                            if (time() - self._start_time) > 0:
+                                self._speed_raw = self._processed_bytes / (
+                                    time() - self._start_time
+                                )
+                            else:
+                                self._speed_raw = 0
                             self._eta_raw = (
                                 self._total_time - self._processed_time
                             ) / self._time_rate
-                        except:
+                        except ZeroDivisionError:
                             self._progress_raw = 0
                             self._eta_raw = 0
+            await sleep(0.05)
 
     async def ffmpeg_cmds(self, ffmpeg, f_path):
         self.clear()
-        if isinstance(f_path, list):
-            self._total_time = 0
-            for f in f_path:
-                self._total_time += (await get_media_info(f))[0]
-            base_name = ospath.commonprefix(f_path)
-            ext = f_path[0].rsplit(".", 1)[-1]
-        else:
-            self._total_time = (await get_media_info(f_path))[0]
-            base_name, ext = ospath.splitext(f_path)
+        self._total_time = (await get_media_info(f_path))[0]
+        base_name, ext = ospath.splitext(f_path)
         dir, base_name = base_name.rsplit("/", 1)
         indices = [
             index
             for index, item in enumerate(ffmpeg)
-            if (item.startswith("mltb") or item == "mltb") and item != "mltb.txt"
+            if item.startswith("mltb") or item == "mltb"
         ]
         outputs = []
         for index in indices:
@@ -406,16 +571,16 @@ class FFMpeg:
             if output_file != "mltb" and output_file.startswith("mltb"):
                 bo, oext = ospath.splitext(output_file)
                 if oext:
-                    if isinstance(f_path, list) or ext != oext:
-                        prefix = ""
-                    else:
+                    if ext == oext:
                         prefix = f"ffmpeg{index}." if bo == "mltb" else ""
+                    else:
+                        prefix = ""
                     ext = ""
                 else:
                     prefix = ""
             else:
                 prefix = f"ffmpeg{index}."
-            output = f"{dir}/{prefix}{output_file.replace("mltb", base_name)}{ext}"
+            output = f"{dir}/{prefix}{output_file.replace('mltb', base_name)}{ext}"
             outputs.append(output)
             ffmpeg[index] = output
         if self._listener.is_cancelled:
@@ -436,7 +601,7 @@ class FFMpeg:
         else:
             try:
                 stderr = stderr.decode().strip()
-            except:
+            except Exception:
                 stderr = "Unable to decode the error!"
             LOGGER.error(
                 f"{stderr}. Something went wrong while running ffmpeg cmd, mostly file requires different/specific arguments. Path: {f_path}"
@@ -456,7 +621,7 @@ class FFMpeg:
                 "taskset",
                 "-c",
                 f"{cores}",
-                "ffmpeg",
+                BinConfig.FFMPEG_NAME,
                 "-hide_banner",
                 "-loglevel",
                 "error",
@@ -485,7 +650,7 @@ class FFMpeg:
                 "taskset",
                 "-c",
                 f"{cores}",
-                "ffmpeg",
+                BinConfig.FFMPEG_NAME,
                 "-hide_banner",
                 "-loglevel",
                 "error",
@@ -523,7 +688,7 @@ class FFMpeg:
                 return await self.convert_video(video_file, ext, True)
             try:
                 stderr = stderr.decode().strip()
-            except:
+            except Exception:
                 stderr = "Unable to decode the error!"
             LOGGER.error(
                 f"{stderr}. Something went wrong while converting video, mostly file need specific codec. Path: {video_file}"
@@ -539,7 +704,7 @@ class FFMpeg:
             "taskset",
             "-c",
             f"{cores}",
-            "ffmpeg",
+            BinConfig.FFMPEG_NAME,
             "-hide_banner",
             "-loglevel",
             "error",
@@ -569,7 +734,7 @@ class FFMpeg:
         else:
             try:
                 stderr = stderr.decode().strip()
-            except:
+            except Exception:
                 stderr = "Unable to decode the error!"
             LOGGER.error(
                 f"{stderr}. Something went wrong while converting audio, mostly file need specific codec. Path: {audio_file}"
@@ -612,7 +777,7 @@ class FFMpeg:
             "taskset",
             "-c",
             f"{cores}",
-            "ffmpeg",
+            BinConfig.FFMPEG_NAME,
             "-hide_banner",
             "-loglevel",
             "error",
@@ -676,7 +841,7 @@ class FFMpeg:
                 "taskset",
                 "-c",
                 f"{cores}",
-                "ffmpeg",
+                BinConfig.FFMPEG_NAME,
                 "-hide_banner",
                 "-loglevel",
                 "error",
@@ -721,12 +886,10 @@ class FFMpeg:
             elif code != 0:
                 try:
                     stderr = stderr.decode().strip()
-                except:
+                except Exception:
                     stderr = "Unable to decode the error!"
-                try:
+                with suppress(Exception):
                     await remove(out_path)
-                except:
-                    pass
                 if multi_streams:
                     LOGGER.warning(
                         f"{stderr}. Retrying without map, -map 0 not working in all situations. Path: {f_path}"
@@ -754,7 +917,7 @@ class FFMpeg:
                 break
             elif duration == lpd:
                 LOGGER.warning(
-                    f"This file has been splitted with default stream and audio, so you will only see one part with less size from original one because it doesn't have all streams and audios. This happens mostly with MKV videos. Path: {f_path}"
+                    f"This file has been splitted with default stream and audio, so you will only see one part with less size from orginal one because it doesn't have all streams and audios. This happens mostly with MKV videos. Path: {f_path}"
                 )
                 break
             elif lpd <= 3:
