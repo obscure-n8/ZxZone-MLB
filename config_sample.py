@@ -14,13 +14,13 @@ USER_SESSION_STRING = ""
 CMD_SUFFIX = ""
 AUTHORIZED_CHATS = ""
 SUDO_USERS = ""
-STATUS_LIMIT = 10
+STATUS_LIMIT = 5
 DEFAULT_UPLOAD = "rc"
 STATUS_UPDATE_INTERVAL = 15
 FILELION_API = ""
 STREAMWISH_API = ""
 EXCLUDED_EXTENSIONS = ""
-INCOMPLETE_TASK_NOTIFIER = False
+INCOMPLETE_TASK_NOTIFIER = True
 YT_DLP_OPTIONS = ""
 USE_SERVICE_ACCOUNTS = False
 NAME_SWAP = ""
@@ -39,12 +39,14 @@ DISABLE_TORRENTS = False
 DISABLE_LEECH = False
 DISABLE_BULK = False
 DISABLE_MULTI = False
-DISABLE_SEED = False
-DISABLE_FF_MODE = False
+DISABLE_SEED = True
+DISABLE_FF_MODE = True
+DISABLE_NZB = True
+DISABLE_JD = True
 
 # Telegraph
-AUTHOR_NAME = "WZML-X"
-AUTHOR_URL = "https://t.me/WZML_X"
+AUTHOR_NAME = "ZxZone-MLB"
+AUTHOR_URL = "https://github.com/obscure-n8/ZxZone-MLB"
 
 # Task Limits
 DIRECT_LIMIT = 0
@@ -103,13 +105,13 @@ TIMEZONE = "Asia/Kolkata"
 
 # GDrive Tools
 GDRIVE_ID = ""
-GD_DESP = "Uploaded with WZ Bot"
+GD_DESP = "Uploaded with ZxZone-MLB Bot"
 IS_TEAM_DRIVE = False
 STOP_DUPLICATE = False
 INDEX_URL = ""
 
 # YT Tools
-YT_DESP = "Uploaded to YouTube by WZML-X bot"
+YT_DESP = "Uploaded to YouTube by ZxZone-MLB bot"
 YT_TAGS = ["telegram", "bot", "youtube"]  # or as a comma-separated string
 YT_CATEGORY_ID = 22
 YT_PRIVACY_STATUS = "unlisted"
@@ -151,8 +153,8 @@ USENET_SERVERS = [
 
 # Update
 UPSTREAM_REPO = ""
-UPSTREAM_BRANCH = "master"
-UPDATE_PKGS = True
+UPSTREAM_BRANCH = "main"
+UPDATE_PKGS = False
 
 # Leech
 LEECH_SPLIT_SIZE = 0
